@@ -1,10 +1,10 @@
 
 #
-# ==================================================
+# ============================================================================
 # CRAM Seminar WS17/18
 # @author Tobias Kuhlmann
 # Algorithmic Design - Robust Estimators with Weighted Least Squares Estimates
-# ==================================================
+# ============================================================================
 #
 
 # Import packages
@@ -15,7 +15,7 @@ matplotlib.use
 import matplotlib.pyplot as plt
 matplotlib.style.use('ggplot')
 
-# Data Import
+# Data Import and Transformation
 # --------------------------------------------------
 
 # Import price data
@@ -55,10 +55,25 @@ es_50.head()
 if es_50.shape[0]==es_50_prices.shape[0] and es_50.shape[0]==es_50_vol.shape[0]:
     print('Data Import and Join successfull')
 
-# Return Calculation
+# Log Returns
 # --------------------------------------------------
+es_50['logreturns'] = np.log(es_50['lastprice'] / es_50['lastprice'].shift(1))
+es_50.head()
+
+# Overview Plot
+es_50.plot(subplots = True)
 
 
+# Estimating beta using WLS-EV
+# --------------------------------------------------
+# 1. Estimate  (sigma_t)2, the (ex ante) conditional variance of next-period unexpected returns epsilon_(t+1)
+# 1.1 Calculate Daily, Weekly (average) and Monthly (average) aggregated volatilities
+
+# 2. Estimate regression beta_WLS-EV using:
+
+
+# Error Statistics
+# --------------------------------------------------
 
 
 
