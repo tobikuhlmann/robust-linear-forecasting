@@ -78,14 +78,30 @@ def estimate_variance(vol):
 
     # define daily volatility
     vol = vol.rename(columns={'volatility': 'vol_daily'})
+    # shift vol_daily
+    vol['vol_daily_est'] = vol['vol_daily'].shift(-1)
     # calculate rolling average volatility weekly
     vol['vol_weekly'] = vol['vol_daily'].rolling(window=5,center=False).mean()
     # calculate rolling average volatility monthly
     vol['vol_monthly'] = vol['vol_daily'].rolling(window=22, center=False).mean()
-    print(vol)
-    # Model: RV_(t+1d)(d)=c+beta(d)*RV_t(d)+beta(w)*RV_t(w)+beta(m)*RV_t(m)+w_(t+1d)(d)
-    regression_model = smf.ols(formula="vol_daily ~ vol_daily + vol_weekly + vol_monthly", data=vol).fit()
-    print(regression_model.params)
+    # Detect, delete print rows with nan
+    nan=vol[vol.isnull().any(axis=1)]
+    vol = vol.dropna()
+    print("{} rows with nan detected and deleted".format(nan.shape[0]))
+    print("New dataframe shape {}".format(vol.shape))
+    # Corsi (2009) HAR-EV Model: RV_(t+1d)(d)=c+beta(d)*RV_t(d)+beta(w)*RV_t(w)+beta(m)*RV_t(m)+w_(t+1d)(d)
+    # fit regression model
+    olsres = smf.ols(formula="vol_daily_est ~ vol_daily + vol_weekly + vol_monthly", data=vol).fit()
+    print(olsres.summary())
+    # predict with fitted regression model
+    vol['vol_daily_est'] = olsres.predict()
+    #print(vol.head())
+    return(vol['vol_daily_est'])
+
+# =======Run=======
+print(estimate_variance(es_50_vol))
+
+
 
 # 2. Estimate regression WLS-EV beta using Johnson (2016)
 # ------------------------------------------------------------------------------------------------------------
@@ -100,8 +116,5 @@ def estimate_wlf_ev(variance, returns):
 # Error Statistics
 # --------------------------------------------------
 
-
-# =======Run=======
-estimate_variance(es_50_vol)
 
 
