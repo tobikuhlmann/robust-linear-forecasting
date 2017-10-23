@@ -3,7 +3,7 @@
 # ============================================================================
 # CRAM Seminar WS17/18
 # @author Tobias Kuhlmann
-# Algorithmic Design - Robust Estimators with Weighted Least Squares Estimates
+# Algorithmic Design - Least squares estimates weighted by ex-ante return variance (WLS-EV)
 # ============================================================================
 #
 
@@ -63,18 +63,45 @@ es_50.head()
 # Overview Plot
 es_50.plot(subplots = True)
 
-
-# Estimating beta using WLS-EV
+# Main function
+# least squares estimates weighted by ex-ante return variance (WLS-EV) using Johnson (2016)
 # --------------------------------------------------
-# 1. Estimate  (sigma_t)2, the (ex ante) conditional variance of next-period unexpected returns epsilon_(t+1)
-# 1.1 Calculate Daily, Weekly (average) and Monthly (average) aggregated volatilities
 
-# 2. Estimate regression beta_WLS-EV using:
 
+# 1. Estimate (sigma_t)2, the (ex ante) conditional variance of next-period unexpected returns epsilon_(t+1)
+# using a HAR-RV (Hierachical Autoregressive-Realized Variance) Model from Corsi (2009)
+# ------------------------------------------------------------------------------------------------------------
+def estimate_variance(vol):
+    # import libraries
+    import pandas as pd
+    import statsmodels.formula.api as smf
+
+    # define daily volatility
+    vol = vol.rename(columns={'volatility': 'vol_daily'})
+    # calculate rolling average volatility weekly
+    vol['vol_weekly'] = vol['vol_daily'].rolling(window=5,center=False).mean()
+    # calculate rolling average volatility monthly
+    vol['vol_monthly'] = vol['vol_daily'].rolling(window=22, center=False).mean()
+    print(vol)
+    # Model: RV_(t+1d)(d)=c+beta(d)*RV_t(d)+beta(w)*RV_t(w)+beta(m)*RV_t(m)+w_(t+1d)(d)
+    regression_model = smf.ols(formula="vol_daily ~ vol_daily + vol_weekly + vol_monthly", data=vol).fit()
+    print(regression_model.params)
+
+# 2. Estimate regression WLS-EV beta using Johnson (2016)
+# ------------------------------------------------------------------------------------------------------------
+def estimate_wlf_ev(variance, returns):
+    # import libraries
+    import pandas as pd
+    import statsmodels as sm
+
+    variance.head()
+    returns.head()
 
 # Error Statistics
 # --------------------------------------------------
 
 
+# =======Run=======
+estimate_variance(es_50_vol)
 
 
