@@ -76,13 +76,13 @@ def estimate_variance(vol):
     import pandas as pd
     import statsmodels.formula.api as smf
 
-    # define daily volatility
+    # explanatory variable 1: rename daily volatility
     vol = vol.rename(columns={'volatility': 'vol_daily'})
-    # shift vol_daily
+    # dependent variable: shift vol_daily as dependent variable
     vol['vol_daily_est'] = vol['vol_daily'].shift(-1)
-    # calculate rolling average volatility weekly
+    # explanatory variable 2: calculate rolling average volatility weekly
     vol['vol_weekly'] = vol['vol_daily'].rolling(window=5,center=False).mean()
-    # calculate rolling average volatility monthly
+    # explanatory variable3: calculate rolling average volatility monthly
     vol['vol_monthly'] = vol['vol_daily'].rolling(window=22, center=False).mean()
     # Detect, delete print rows with nan
     nan=vol[vol.isnull().any(axis=1)]
@@ -98,14 +98,10 @@ def estimate_variance(vol):
     #print(vol.head())
     return(vol['vol_daily_est'])
 
-# =======Run=======
-print(estimate_variance(es_50_vol))
-
-
 
 # 2. Estimate regression WLS-EV beta using Johnson (2016)
 # ------------------------------------------------------------------------------------------------------------
-def estimate_wlf_ev(variance, returns):
+def estimate_wlf_ev(vol_est, returns):
     # import libraries
     import pandas as pd
     import statsmodels as sm
@@ -116,5 +112,8 @@ def estimate_wlf_ev(variance, returns):
 # Error Statistics
 # --------------------------------------------------
 
+
+# =======Run=======
+vol_est = estimate_variance(es_50_vol)
 
 
