@@ -44,6 +44,9 @@ es_50_vol['loctimestamp'] = pd.to_datetime(es_50_vol['loctimestamp'])
 # Delete unnecessary columns
 del es_50_vol['instrumentid']
 
+# Calculate variance from vol
+es_50_vol['volatility'] = es_50_vol['volatility'] ** 2
+
 # set index, rename and check
 es_50_vol = es_50_vol.rename(columns={'loctimestamp': 'date'})
 es_50_vol = es_50_vol.set_index('date')
