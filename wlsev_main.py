@@ -52,6 +52,13 @@ es_50_vol = es_50_vol.rename(columns={'loctimestamp': 'date'})
 es_50_vol = es_50_vol.set_index('date')
 es_50_vol.sort_index()
 
+# Import Vix implied volatility
+es_50_imp_vol = pd.read_csv('es50_implied_volatility.csv', parse_dates=True)
+es_50_imp_vol.head()
+
+# Transform dates
+es_50_vol['loctimestamp'] = pd.to_datetime(es_50_vol['loctimestamp'])
+
 # Join prices and vol
 es_50 = es_50_prices.join(es_50_vol)
 es_50.head()
