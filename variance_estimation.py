@@ -26,12 +26,13 @@ class ExAnteVariance(object):
     #                          Model from Corsi (2009)
     #
 
-    def __init__(self, vol):
+    def __init__(self, vol, implied_vol = None):
         #
         # DESCRIPTION:
         #   Initialize object with es50 volatility
         #
         self.vol = vol
+        self.imp_vol = implied_vol
         self.nan = None
         self.ols_res = None
         self.plt = None
@@ -59,13 +60,25 @@ class ExAnteVariance(object):
         print("{} rows with nan detected and deleted".format(self.nan.shape[0]))
         print("New dataframe shape {}".format(self.vol.shape))
 
-        # Corsi (2009) HAR-EV Model: RV_(t+1d)(d)=c+beta(d)*RV_t(d)+beta(w)*RV_t(w)+beta(m)*RV_t(m)+w_(t+1d)(d)
-        # fit regression model
-        self.ols_res = smf.ols(formula="vol_daily_est ~ vol_daily + vol_weekly + vol_monthly", data=self.vol).fit()
-        print(self.ols_res.summary())
-        # predict with fitted regression model
-        self.vol['vol_daily_est'] = self.ols_res.predict()
-        print('Variance estimated!')
+        # Check if implied vol is passed and proceed respectively
+        # Without implied vol
+        if self.imp_vol is None:
+            # Corsi (2009) HAR-EV Model: RV_(t+1d)(d)=c+beta(d)*RV_t(d)+beta(w)*RV_t(w)+beta(m)*RV_t(m)+w_(t+1d)(d)
+            # fit regression model
+            self.ols_res = smf.ols(formula="vol_daily_est ~ vol_daily + vol_weekly + vol_monthly", data=self.vol).fit()
+            print(self.ols_res.summary())
+            # predict with fitted regression model
+            self.vol['vol_daily_est'] = self.ols_res.predict()
+            print('Variance estimated!')
+        # With implied vol
+        else:
+            # Corsi (2009) HAR-EV Model: RV_(t+1d)(d)=c+beta(d)*RV_t(d)+beta(imp)*IMPV_t(d)+beta(w)*RV_t(w)+beta(m)*RV_t(m)+w_(t+1d)(d)
+            # fit regression model
+            self.ols_res = smf.ols(formula="vol_daily_est ~ vol_daily + implied_vol + vol_weekly + vol_monthly", data=self.vol).fit()
+            print(self.ols_res.summary())
+            # predict with fitted regression model
+            self.vol['vol_daily_est'] = self.ols_res.predict()
+            print('Variance estimated!')
 
         # plot
         self.vol.plot(subplots=True)
