@@ -62,7 +62,7 @@ es_50_vol = es_50_vol.set_index('date')
 es_50_vol = es_50_vol.sort_index()
 
 
-# Import implied volatility?
+# Import implied volatility
 # --------------------------------------------------
 es_50_imp_vol = pd.read_csv('es50_implied_volatility.csv', parse_dates=True)
 
@@ -73,7 +73,7 @@ es_50_imp_vol['loctimestamp'] = pd.to_datetime(es_50_imp_vol['loctimestamp'])
 del es_50_imp_vol['instrumentid']
 del es_50_imp_vol['maturity']
 
-# Calculate variance from implied vol
+# Calculate implied variance from implied vol
 es_50_imp_vol['implied_vol'] = es_50_imp_vol['measure'] ** 2
 
 # set index, rename and check
@@ -92,23 +92,25 @@ es_50_imp_vol = es_50_vol.join(es_50_imp_vol['implied_vol']).dropna()
 # ------------------------------------------------------------------------------------------------------------
 # First, instantiate object
 # no implied vol
-ea_var_obj = ExAnteVariance(es_50_vol)
+# ea_var_obj = ExAnteVariance(es_50_vol)
 # implied vol exists
 ea_var_obj = ExAnteVariance(es_50_imp_vol, es_50_imp_vol['implied_vol'])
 
 # Estimate Variance
 result = ea_var_obj.estimate_variance()
-result = es_50_vol.dropna()
+result = result.dropna()
 print('result')
-print(result.head())
+print("Estimated variance: {}".format(result.head()))
 
 
 # 2. least squares estimates weighted by ex-ante return variance (WLS-EV) using Johnson (2016)
 # --------------------------------------------------
 # First, instantiate object
-wlsev_obj = WlsEvEstimation(es_50_logret.join(result).dropna())
-wlsev_obj.estimate_wlf_ev()
-
+wlsev_var_rets = es_50_logret.join(result).dropna()
+wlsev_var_rets.plot(subplots=True)
+wlsev_obj = WlsEvEstimation(wlsev_var_rets)
+wlsev, robust_standard_errors = wlsev_obj.estimate_wlf_ev()
+print(robust_standard_errors.summary())
 
 
 
