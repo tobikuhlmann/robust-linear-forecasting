@@ -9,6 +9,7 @@
 
 # Import packages
 from variance_estimation import ExAnteVariance
+from wlsev_estimation import Wlsevestimation
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -92,9 +93,9 @@ es_50_imp_vol = es_50_vol.join(es_50_imp_vol['implied_vol']).dropna()
 # ------------------------------------------------------------------------------------------------------------
 # First, instantiate object
 # no implied vol
-# ea_var_obj = ExAnteVariance(es_50_vol)
+ea_var_obj = ExAnteVariance(es_50_vol)
 # implied vol exists
-ea_var_obj = ExAnteVariance(es_50_imp_vol, es_50_imp_vol['implied_vol'])
+#ea_var_obj = ExAnteVariance(es_50_imp_vol, es_50_imp_vol['implied_vol'])
 
 # Estimate Variance
 result = ea_var_obj.estimate_variance()
@@ -108,8 +109,8 @@ print("Estimated variance: {}".format(result.head()))
 # First, instantiate object
 wlsev_var_rets = es_50_logret.join(result).dropna()
 wlsev_var_rets.plot(subplots=True)
-wlsev_obj = WlsEvEstimation(wlsev_var_rets)
-wlsev, robust_standard_errors = wlsev_obj.estimate_wlf_ev()
+wlsev_obj = Wlsevestimation(wlsev_var_rets)
+wlsev, robust_standard_errors = wlsev_obj.estimate_wlf_ev_non_overlapping()
 print(robust_standard_errors.summary())
 
 
