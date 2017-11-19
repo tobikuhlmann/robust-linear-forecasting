@@ -109,10 +109,17 @@ print("Estimated variance: {}".format(result.head()))
 # First, instantiate object
 wlsev_var_rets = es_50_logret.join(result).dropna()
 wlsev_var_rets.plot(subplots=True)
-wlsev_obj = Wlsevestimation(wlsev_var_rets)
-wlsev, robust_standard_errors = wlsev_obj.estimate_wlf_ev_non_overlapping()
-print(robust_standard_errors.summary())
+# set forecast_horizon
+forecast_horizon = 10
+wlsev_obj = Wlsevestimation(wlsev_var_rets, forecast_horizon)
 
+# for non-overlapping day-ahead prediction
+#wlsev, robust_standard_errors = wlsev_obj.estimate_wlf_ev_non_overlapping()
+
+# for overlapping interval-ahead prediction with forecast horizon h
+wlsev, robust_standard_errors = wlsev_obj.estimate_wlf_ev_overlapping()
+
+print(robust_standard_errors.summary())
 
 
 

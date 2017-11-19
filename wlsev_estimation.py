@@ -24,13 +24,14 @@ class Wlsevestimation(object):
     #   'estimate_wlf_ev'  : Estimate return regression beta WLS-EV using Johnson (2016)
     #
 
-    def __init__(self, log_returns):
+    def __init__(self, log_returns, forecast_horizon):
         #
         # DESCRIPTION:
         #   Initialize object with es50 data
         #
         self.log_returns = log_returns['logreturns']
         self.est_var = log_returns['vol_daily_est']
+        self.forecast_horizon = forecast_horizon
 
         print('WLS-EV Regression Object initialized!')
 
@@ -49,28 +50,16 @@ class Wlsevestimation(object):
         # --------------------------------------------------------------------------------
         # Regress Y = r_(t+1)/sigma2 on X=X_t/sigma2
 
-        # delete last row of series to adjust dimensionality
-        X_log_rets_dim_adj = self.log_returns[1:-1].as_matrix()
+        # Get vol from var through square root and delete last row of series to adjust dimensionality
         est_var_dim_adj  = self.est_var[:-1].as_matrix()**0.5
 
-        # X = X_t/sigma2_t, no constant since constant is already in X_t
-        X = pd.Series(X_log_rets_dim_adj/est_var_dim_adj[1:])
-
-        print("X head: {}".format(X.head()))
-
-        # Shift Y data up to get (t+1) and delete last row of series to delete nan
-        Y_log_returns_shift = self.log_returns[2:].as_matrix()
-
-        #Y_log_returns_shift = self.log_returns.shift(-1) # shift up
-        #Y_log_returns_shift = Y_log_returns_shift[:-1] # delete last row
+        # X = X_t/sigma2_t, no constant since constant is already in X_t, delete last row to adjust for dimensionality
+        X = self.log_returns[:-1].as_matrix()/est_var_dim_adj
 
         # Y = r_(t+1)/sigma2_t
-        Y = pd.Series(Y_log_returns_shift/est_var_dim_adj[1:])
-
-        print("Y head: {}".format(Y.head()))
+        Y = self.log_returns[1:].as_matrix()/est_var_dim_adj
 
         # Next, run ols regression to estimate the wlsev parameters
-        #
         wlsev_reg_model = sm.OLS(Y, X)
         wlsev = wlsev_reg_model.fit()  # Fit the model
 
@@ -101,34 +90,41 @@ class Wlsevestimation(object):
         # TODO: 1. Estimate the non-overlapping regression r_(t+1) on rolling sum
         # Regress Y = r_(t+1)/sigma2 on X=HodrickSum
 
-        # prepare sigma^2 by deleting rows to adjust dimensionality
-        est_var_dim_adj = self.est_var[:-1]
-
-        # Calculate HodrickSum of X
+        # Get vol from var through square root and delete last row of series to adjust dimensionality
+        est_var_dim_adj  = self.est_var[self.forecast_horizon-1:-1].as_matrix()**0.5
 
         # X = HodrickSum(X)/sigma2_t, no constant since constant is already in X
+        # Initialize X(t) and divide by estimated sigma_t->t+1 for wls_ev
+        X = self.log_returns[self.forecast_horizon-1:-1].as_matrix() / est_var_dim_adj
 
-        print("X head: {}".format(X.head()))
+        # Stack X and X(t-1) + X(t-2) + ... + X(t-(forecast horizon-1)) and divide each instance by estimated sigma_t->t+1 for wls_ev
+        for i in range(1, self.forecast_horizon-1):
+            X = np.vstack((X, self.log_returns[(self.forecast_horizon-(1+i)):-(1+i)].as_matrix() / est_var_dim_adj))
 
-        # Shift Y data up to get (t+1) and delete last row of series to delete nan
-        Y_log_returns_shift = self.log_returns.shift(-1)  # shift up
-        Y_log_returns_shift = Y_log_returns_shift[:-1]  # delete last row
+        # Transpose X to get correct OLS dimensions
+        X = np.transpose(X)
 
         # Y = r_(t+1)/sigma2_t
-        Y = Y_log_returns_shift / est_var_dim_adj
-
-        print("Y head: {}".format(Y.head()))
+        Y = self.log_returns[self.forecast_horizon:].as_matrix()/est_var_dim_adj
 
         # Next, run ols regression to estimate the wlsev parameters
-        #
         wlsev_reg_model = sm.OLS(Y, X)
         wlsev = wlsev_reg_model.fit()  # Fit the model
 
+
+        # Error Statistics
+        # --------------------------------------------------------------------------------
         # Get robust standard errors Newey West (1987) with 6 lags
         robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
         robust_standard_errors.summary()
 
         # TODO: 2. Scale the resulting coefficients and standard errors
 
+        # Calculate Var(x_t_rolling): Variance of rolling sum
+        #Var_x_t_rolling = np.var(X)
 
-        return
+        # Calculate Var(x_t): Variance of complete log return series x_t
+        #Var_x_t = np.var(X[0:])
+
+
+        return wlsev, robust_standard_errors
