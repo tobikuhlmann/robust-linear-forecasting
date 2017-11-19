@@ -86,6 +86,7 @@ es_50_imp_vol = es_50_imp_vol.sort_index()
 es_50_imp_vol = es_50_vol.join(es_50_imp_vol['implied_vol']).dropna()
 
 # Main function
+# ---------------------------------------------------------------------------------------------------------------------
 #
 
 # 1. Estimate (sigma_t)2, the (ex ante) conditional variance of next-period unexpected returns epsilon_(t+1)
@@ -105,7 +106,7 @@ print("Estimated variance: {}".format(result.head()))
 
 
 # 2. least squares estimates weighted by ex-ante return variance (WLS-EV) using Johnson (2016)
-# --------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------
 # First, instantiate object
 wlsev_var_rets = es_50_logret.join(result).dropna()
 wlsev_var_rets.plot(subplots=True)
