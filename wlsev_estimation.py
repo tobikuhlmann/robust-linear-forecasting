@@ -21,7 +21,8 @@ class Wlsevestimation(object):
     #
     # METHODS:
     #   'init'               : Initialization of the object with the es50 log return and estimated volatility data
-    #   'estimate_wlf_ev'  : Estimate return regression beta WLS-EV using Johnson (2016)
+    #   'estimate_wlf_ev_non_overlapping'  : Estimate return regression beta WLS-EV using Johnson (2016) for non overlapping returns
+    #   'estimate_wlf_ev_non_overlapping'  : Estimate return regression beta WLS_EV using Johnson (2016) and Hodrick (1992) to account for overlapping returns
     #
 
     def __init__(self, log_returns, forecast_horizon):
