@@ -115,6 +115,8 @@ wlsev_obj = Wlsevestimation(wlsev_var_rets, forecast_horizon)
 
 # for non-overlapping day-ahead prediction
 #wlsev, robust_standard_errors = wlsev_obj.estimate_wlf_ev_non_overlapping()
+#wlsev, robust_standard_errors = wlsev_obj.estimate_wlf_ev_non_overlapping()
+
 
 # for overlapping interval-ahead prediction with forecast horizon h
 wlsev, robust_standard_errors = wlsev_obj.estimate_wlf_ev_overlapping()

@@ -105,7 +105,7 @@ class Wlsevestimation(object):
         X = np.transpose(X)
 
         # Y = r_(t+1)/sigma2_t
-        Y = self.log_returns[self.forecast_horizon:].as_matrix()/est_var_dim_adj
+        Y = self.log_returns[self.forecast_horizon:].as_matrix() / est_var_dim_adj
 
         # Next, run ols regression to estimate the wlsev parameters
         wlsev_reg_model = sm.OLS(Y, X)
@@ -121,10 +121,26 @@ class Wlsevestimation(object):
         # TODO: 2. Scale the resulting coefficients and standard errors
 
         # Calculate Var(x_t_rolling): Variance of rolling sum
-        #Var_x_t_rolling = np.var(X)
+        Var_x_t_rolling = X.var(0)
 
-        # Calculate Var(x_t): Variance of complete log return series x_t
-        #Var_x_t = np.var(X[0:])
+        # Calculate Var(x_t): Variance of log return series x_t
+        Var_x_t = X.var(0)[0]
 
+        # Scale Var_x_t_rolling/Var_x_t
+        scale = Var_x_t_rolling / Var_x_t
+
+        # Scale betas
+        betas = scale * robust_standard_errors.params
+
+        # Scale standard errors
+        std_errors = scale * robust_standard_errors.mse_resid
+
+
+        # Print Results
+        print("Results")
+        print("-------------------------------------------------------------------------------------------------------")
+        print("Scaled betas: {}".format(betas))
+        print("Scaled MSE standard errors: {}".format(std_errors))
+        print("-------------------------------------------------------------------------------------------------------")
 
         return wlsev, robust_standard_errors
