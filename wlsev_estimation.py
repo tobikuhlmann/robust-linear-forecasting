@@ -134,14 +134,15 @@ class Wlsevestimation(object):
         betas = scale * robust_standard_errors.params
 
         # Scale standard errors
-        std_errors = scale * robust_standard_errors.mse_resid
-
+        std_errors = scale * robust_standard_errors.bse
 
         # Print Results
         print("Results")
         print("-------------------------------------------------------------------------------------------------------")
+        print("Scales: {}".format(scale))
         print("Scaled betas: {}".format(betas))
-        print("Scaled MSE standard errors: {}".format(std_errors))
+        print("Scaled bse standard errors: {}".format(std_errors))
+        print("Scaled mse standard errors: {}".format(scale * robust_standard_errors.mse_resid))
         print("-------------------------------------------------------------------------------------------------------")
 
         return wlsev, robust_standard_errors

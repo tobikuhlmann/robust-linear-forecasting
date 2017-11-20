@@ -85,10 +85,10 @@ es_50_imp_vol = es_50_imp_vol.sort_index()
 # join vol and implied vol
 es_50_imp_vol = es_50_vol.join(es_50_imp_vol['implied_vol']).dropna()
 
+
 # Main function
 # ---------------------------------------------------------------------------------------------------------------------
 #
-
 # 1. Estimate (sigma_t)2, the (ex ante) conditional variance of next-period unexpected returns epsilon_(t+1)
 # using a HAR-RV (Hierachical Autoregressive-Realized Variance) Model from Corsi (2009)
 # ------------------------------------------------------------------------------------------------------------
