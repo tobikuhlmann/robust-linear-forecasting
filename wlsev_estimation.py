@@ -159,3 +159,56 @@ class Wlsevestimation(object):
         print("-------------------------------------------------------------------------------------------------------")
 
         return wlsev, robust_standard_errors
+
+
+    def estimate_wlf_ev_non_overlapping(self):
+        #
+        # DESCRIPTION:
+        #   Estimate return regression beta with WLS-EV
+        #
+
+        # import libraries
+        import pandas as pd
+        import statsmodels.api as sm
+
+
+        # Estimate Regression beta with WLS-EV
+        # --------------------------------------------------------------------------------
+        # Regress Y = r_(t+1)/sigma2 on X=X_t/sigma2
+
+        # Get vol from var through square root and delete last row of series to adjust dimensionality
+        est_var_dim_adj  = self.est_var[:-1].as_matrix()**0.5
+
+        # X = X_t/sigma2_t, no constant since constant is already in X_t, delete last row to adjust for dimensionality
+        X = self.log_returns[:-1].as_matrix()/est_var_dim_adj
+
+        # Y = r_(t+1)/sigma2_t
+        Y = self.log_returns[1:].as_matrix()/est_var_dim_adj
+
+        # Next, run ols regression to estimate the wlsev parameters
+        wlsev_reg_model = sm.OLS(Y, X)
+        wlsev = wlsev_reg_model.fit()  # Fit the model
+
+
+        # Error Statistics
+        # --------------------------------------------------------------------------------
+        # Get robust standard errors Newey West (1987) with 6 lags
+        robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
+        robust_standard_errors.summary()
+
+        return wlsev, robust_standard_errors
+
+
+    def predict_wls_ev(self):
+        #
+        # DESCRIPTION:
+        #   Estimate return regression beta with WLS-EV
+        #
+
+        # import libraries
+        import pandas as pd
+        import statsmodels.api as sm
+
+
+
+        return wlsev, robust_standard_errors
