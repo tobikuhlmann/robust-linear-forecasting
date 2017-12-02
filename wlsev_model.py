@@ -13,16 +13,17 @@ matplotlib.style.use('ggplot')
 
 
 
-class Wlsevestimation(object):
+class Wlsev_model(object):
 
     # DESCRIPTION:
     #   This class implements the second wls-ev step:
     #   Estimate return regression WLS-EV beta using Johnson
     #
     # METHODS:
-    #   'init'               : Initialization of the object with the es50 log return and estimated volatility data
-    #   'estimate_wlf_ev_non_overlapping'  : Estimate return regression beta WLS-EV using Johnson (2016) for non overlapping returns
-    #   'estimate_wlf_ev_overlapping'  : Estimate return regression beta WLS_EV using Johnson (2016) and Hodrick (1992) to account for overlapping returns
+    #   'init'                              : Initialization of the object with the es50 log return and estimated volatility data
+    #   'estimate_wls_ev'                   : Run correct model estimation based on forecast horizon (overlapping or non-overlapping)
+    #   'estimate_wls_ev_non_overlapping'   : Estimate return regression beta WLS-EV using Johnson (2016) for non overlapping returns
+    #   'estimate_wls_ev_overlapping'       : Estimate return regression beta WLS_EV using Johnson (2016) and Hodrick (1992) to account for overlapping returns
     #
 
     def __init__(self, log_returns, vol,  forecast_horizon):
@@ -40,7 +41,22 @@ class Wlsevestimation(object):
 
         print('WLS-EV Regression Object initialized!')
 
-    def estimate_wlf_ev_non_overlapping(self):
+    def estimate_wls_ev(self):
+        #
+        # DESCRIPTION:
+        #   Estimate wls-ev with correct function, depending on forecast horizon if returns are overlapping
+        #
+
+        if self.forecast_horizon == 1:
+            self.betas, self.std_errors, self.t_stats = self.estimate_wls_ev_non_overlapping()
+
+        else:
+            self.betas, self.std_errors, self.t_stats = self.estimate_wls_ev_non_overlapping()
+
+        return self.betas, self.std_errors, self.t_stats
+
+
+    def estimate_wls_ev_non_overlapping(self):
         #
         # DESCRIPTION:
         #   Estimate return regression beta with WLS-EV
@@ -73,11 +89,26 @@ class Wlsevestimation(object):
         # --------------------------------------------------------------------------------
         # Get robust standard errors Newey West (1987) with 6 lags
         robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
-        robust_standard_errors.summary()
 
-        return wlsev, robust_standard_errors
+        # betas
+        betas = robust_standard_errors.params
+        # standard errors
+        std_errors = robust_standard_errors.bse
+        # t-statistics
+        t_stats = betas / std_errors
 
-    def estimate_wlf_ev_overlapping(self):
+        print("WLS-EV Estimation Results Non-Overlapping")
+        print('Forecast Horizon: {}'.format(self.forecast_horizon))
+        print("-------------------------------------------------------------------------------------------------------")
+        print("betas: {}".format(betas))
+        print("bse standard errors: {}".format(std_errors))
+        print("t-stats: {}".format(t_stats))
+        print("-------------------------------------------------------------------------------------------------------")
+
+
+        return betas, std_errors, t_stats
+
+    def estimate_wls_ev_overlapping(self):
         #
         # DESCRIPTION:
         #   Estimate return regression beta with WLS-EV
@@ -100,12 +131,10 @@ class Wlsevestimation(object):
 
         # X = HodrickSum(X)/sigma2_t, no constant since constant is already in X
         # Initialize X(t) and divide by estimated sigma_t->t+1 for wls_ev
-        #X = self.log_returns[self.forecast_horizon-1:-1].as_matrix() / est_var_dim_adj
         X = self.log_returns[self.forecast_horizon - 1:-1].as_matrix()
 
         # Stack X and X(t-1) + X(t-2) + ... + X(t-(forecast horizon-1)) and divide each instance by estimated sigma_t->t+1 for wls_ev
         for i in range(1, self.forecast_horizon):
-            #X = np.vstack((X, self.log_returns[(self.forecast_horizon-(1+i)):-(1+i)].as_matrix() / est_var_dim_adj))
             X = np.vstack((X, self.log_returns[(self.forecast_horizon - (1 + i)):-(1 + i)].as_matrix()))
 
         # Transpose X to get correct OLS dimensions
@@ -139,22 +168,19 @@ class Wlsevestimation(object):
         robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
         #robust_standard_errors.summary()
 
-        # TODO: 2. Scale the resulting coefficients and standard errors
-
+        # 2. Scale the resulting coefficients and standard errors
         # Scale Var_x_t_rolling/Var_x_t
         scale = Var_x_t_rolling / Var_x_t
-
         # Scale betas
         betas = scale * robust_standard_errors.params
-
         # Scale standard errors
         std_errors = scale * robust_standard_errors.bse
-
         # t-statistic
         t_stats = betas / std_errors
 
         # Print Results
-        print("WLS-EV Estimation Results")
+        print("WLS-EV Estimation Results Overlapping")
+        print('Forecast Horizon: {}'.format(self.forecast_horizon))
         print("-------------------------------------------------------------------------------------------------------")
         print("Scale: {}".format(scale))
         print("Scaled betas: {}".format(betas))
@@ -164,18 +190,20 @@ class Wlsevestimation(object):
 
         return betas, std_errors, t_stats
 
-
-
-    def predict_wls_ev(self):
+    def wls_ev_predict(self):
         #
         # DESCRIPTION:
-        #   Estimate return regression beta with WLS-EV
+        #   Predict values based on estimated wls-ev model
         #
 
-        # import libraries
-        import pandas as pd
-        import statsmodels.api as sm
+        return
 
+    def wls_ev_eval(self):
+        #
+        # DESCRIPTION:
+        #   evaluate predictions based on estimated wls-ev mode
+        #
 
+        # Split train and test set
 
-        return wlsev, robust_standard_errors
+        return

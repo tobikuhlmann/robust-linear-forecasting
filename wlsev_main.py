@@ -9,7 +9,7 @@
 
 # Import packages
 from variance_estimation import ExAnteVariance
-from wlsev_estimation import Wlsevestimation
+from wlsev_model import Wlsev_model
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -100,19 +100,17 @@ result = result.dropna()
 
 # 2. least squares estimates weighted by ex-ante return variance (WLS-EV) using Johnson (2016)
 # ------------------------------------------------------------------------------------------------------------
-# Join returns and log
+# Join returns and estimated variance
 wlsev_var_rets = es_50_logret.join(result).dropna()
 # set forecast_horizon
 forecast_horizon = 10
 # Instantiate object
-wlsev_obj = Wlsevestimation(wlsev_var_rets['logreturns'], wlsev_var_rets['vol_daily_est'], forecast_horizon)
+wlsev_obj = Wlsev_model(wlsev_var_rets['logreturns'], wlsev_var_rets['vol_daily_est'], forecast_horizon)
 
-# for non-overlapping day-ahead prediction
-#wlsev, robust_standard_errors = wlsev_obj.estimate_wlf_ev_non_overlapping()
+# ahead prediction with forecast horizon h
+betas, std_errors, t_stats = wlsev_obj.estimate_wls_ev()
 
-
-# for overlapping interval-ahead prediction with forecast horizon h
-betas, std_errors, t_stats = wlsev_obj.estimate_wlf_ev_overlapping()
+# evaluation to get MSEs and Rsquared
 
 
 
