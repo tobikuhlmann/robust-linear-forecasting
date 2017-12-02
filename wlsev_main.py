@@ -1,7 +1,7 @@
 
 #
 # ============================================================================
-# CRAM Seminar WS17/18
+# KIT CRAM Seminar WS17/18
 # @author Tobias Kuhlmann
 # Algorithmic Design - Least squares estimates weighted by ex-ante return variance (WLS-EV)
 # ============================================================================
