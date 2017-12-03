@@ -103,13 +103,13 @@ result = result.dropna()
 # Join returns and estimated variance
 wlsev_var_rets = es_50_logret.join(result).dropna()
 # set forecast_horizon
-forecast_horizon = 1
+forecast_horizon = 10
 # Instantiate object
-wlsev_obj = Wlsev_model(wlsev_var_rets['logreturns'], wlsev_var_rets['vol_daily_est'], forecast_horizon)
+wlsev_obj = Wlsev_model(wlsev_var_rets['logreturns'].as_matrix(), wlsev_var_rets['vol_daily_est'].as_matrix(), forecast_horizon)
 
-# model fitting
+# fit model
 betas, std_errors, t_stats = wlsev_obj.estimate_wls_ev()
 
-# evaluation to get MSEs and Rsquared
+# OOS evaluation to get MSEs and Rsquared
 r_squared = wlsev_obj.wls_ev_eval()
 

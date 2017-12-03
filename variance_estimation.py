@@ -83,6 +83,6 @@ class ExAnteVariance(object):
             print('Variance estimated!')
 
         # plot
-        self.vol.plot(subplots=True)
+        #self.vol.plot(subplots=True)
 
         return self.vol['vol_daily_est']

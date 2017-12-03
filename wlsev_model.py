@@ -72,13 +72,13 @@ class Wlsev_model(object):
         # Regress Y = r_(t+1)/sigma2 on X=X_t/sigma2
 
         # Get vol from var through square root and delete last row of series to adjust dimensionality
-        est_var_dim_adj  = self.est_var[:-1].as_matrix()**0.5
+        est_var_dim_adj  = self.est_var[:-1]**0.5
 
         # X = X_t/sigma2_t, no constant since constant is already in X_t, delete last row to adjust for dimensionality
-        X = self.log_returns[:-1].as_matrix()/est_var_dim_adj
+        X = self.log_returns[:-1]/est_var_dim_adj
 
         # Y = r_(t+1)/sigma2_t
-        Y = self.log_returns[1:].as_matrix()/est_var_dim_adj
+        Y = self.log_returns[1:]/est_var_dim_adj
 
         # Next, run ols regression to estimate the wlsev parameters
         wlsev_reg_model = sm.OLS(Y, X)
@@ -105,7 +105,6 @@ class Wlsev_model(object):
         print("t-stats: {}".format(t_stats))
         print("-------------------------------------------------------------------------------------------------------")
 
-
         return betas, std_errors, t_stats
 
 
@@ -128,15 +127,15 @@ class Wlsev_model(object):
         # Regress Y = r_(t+1)/sigma2 on X=HodrickSum
 
         # Get vol from var through square root and delete last row of series to adjust dimensionality
-        est_var_dim_adj  = self.est_var[self.forecast_horizon-1:-1].as_matrix()**0.5
+        est_var_dim_adj  = self.est_var[self.forecast_horizon-1:-1]**0.5
 
         # X = HodrickSum(X)/sigma2_t, no constant since constant is already in X
         # Initialize X(t) and divide by estimated sigma_t->t+1 for wls_ev
-        X = self.log_returns[self.forecast_horizon - 1:-1].as_matrix()
+        X = self.log_returns[self.forecast_horizon - 1:-1]
 
         # Stack X and X(t-1) + X(t-2) + ... + X(t-(forecast horizon-1))
         for i in range(1, self.forecast_horizon):
-            X = np.vstack((X, self.log_returns[(self.forecast_horizon - (1 + i)):-(1 + i)].as_matrix()))
+            X = np.vstack((X, self.log_returns[(self.forecast_horizon - (1 + i)):-(1 + i)]))
 
         # Transpose X to get correct OLS dimensions
         X = np.transpose(X)
@@ -155,7 +154,7 @@ class Wlsev_model(object):
         X = sm.add_constant(X)
 
         # Y = r_(t+1)/sigma2_t
-        Y = self.log_returns[self.forecast_horizon:].as_matrix() / est_var_dim_adj
+        Y = self.log_returns[self.forecast_horizon:] / est_var_dim_adj
         Y = np.transpose(Y)
 
         # Next, run ols regression to estimate the wlsev parameters
@@ -213,9 +212,11 @@ class Wlsev_model(object):
 
             # Predict r_(t+1)
             if self.forecast_horizon ==1:
+                # no constant for day ahead prediction
                 log_return_predict_wlsev[i-start_index_test] = betas[0] * self.log_returns[i]
-            #else:
-                # TODO: Implement cummulative, overlapping prediction
+            else:
+                # with constant beta0, beta1 * last available value
+                log_return_predict_wlsev[i-start_index_test] = betas[0] + betas[1] * self.log_returns[i]
 
         return log_return_predict_wlsev
 
@@ -237,9 +238,9 @@ class Wlsev_model(object):
             # Predict r_(t+1)
             if self.forecast_horizon == 1:
                 log_return_predict_benchmark[i-start_index_test] = np.mean(self.log_returns[:i])
-            #else:
-                # TODO: Implement cummulative, overlapping prediction
-                log_return_predict_benchmark[i - start_index_test] = np.mean(self.log_returns[:i])
+            else:
+                # Calculate mean of rolling sum (=cummulative log returns)
+                log_return_predict_benchmark[i - start_index_test] = np.mean(rolling_sum(self.log_returns[:i], self.forecast_horizon))
 
         return log_return_predict_benchmark
 
@@ -259,11 +260,22 @@ class Wlsev_model(object):
         # define start index test set
         start_test_set = int(len(self.log_returns)*2/3)
 
-        # Calculate MSE of wls-ev prediction, start at (test set index)+1, as prediction one period ahead
-        mse_wlsev = np.mean((self.log_returns[start_test_set+1:]-log_return_predict_wlsev) ** 2)
+        # Different methods for cummulativa vs day-ahead forecasting
+        if self.forecast_horizon == 1:
+            # Calculate MSE of wls-ev prediction, start at (test set index)+1, as prediction one period ahead
+            mse_wlsev = np.mean((self.log_returns[start_test_set+1:] - log_return_predict_wlsev) ** 2)
 
-        # Calculate MSE of benchmark prediction, start at (test set index)+1, as prediction one period ahead
-        mse_benchmark = np.mean((self.log_returns[start_test_set+1:]-log_return_predict_benchmark) ** 2)
+            # Calculate MSE of benchmark prediction, start at (test set index)+1, as prediction one period ahead
+            mse_benchmark = np.mean((self.log_returns[start_test_set+1:] - log_return_predict_benchmark) ** 2)
+        else:
+            # calculate realized cummulative returns over forecast horizon sequences
+            cum_rets_realized = np.mean(rolling_sum(self.log_returns[start_test_set + 1:], self.forecast_horizon))
+            # Calculate MSE of wls-ev prediction, start at (test set index)+1, as prediction one period ahead
+            mse_wlsev = np.mean((cum_rets_realized - log_return_predict_wlsev) ** 2)
+
+            # Calculate MSE of benchmark prediction, start at (test set index)+1, as prediction one period ahead
+            mse_benchmark = np.mean((cum_rets_realized - log_return_predict_benchmark) ** 2)
+
 
         # Calculate out of sample r-squared
         oos_r_squared = 1 - (mse_wlsev/mse_benchmark)
