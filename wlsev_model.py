@@ -41,6 +41,7 @@ class Wlsev_model(object):
 
         print('WLS-EV Regression Object initialized!')
 
+
     def estimate_wls_ev(self):
         #
         # DESCRIPTION:
@@ -107,6 +108,7 @@ class Wlsev_model(object):
 
 
         return betas, std_errors, t_stats
+
 
     def estimate_wls_ev_overlapping(self):
         #
@@ -190,28 +192,34 @@ class Wlsev_model(object):
 
         return betas, std_errors, t_stats
 
+
     def wls_ev_predict(self):
         #
         # DESCRIPTION:
         #   Predict values based on estimated wls-ev model
         #
 
-        # Initialize result array
-        log_return_predict_wlsev = np.empty(len(range(int(len(self.log_returns) * 2 / 3), len(self.log_returns))))
+        # Get time series index for split train/test set
+        start_index_test = int(len(self.log_returns)*2/3)
 
-        # Loop through time series
-        print("int {}".format(int(len(self.log_returns)*2/3)))
-        for i in range(int(len(self.log_returns)*2/3), len(self.log_returns)):
-            # Estimate model
+        # Initialize result array with the length of test set -1 = length set - length training set
+        log_return_predict_wlsev = np.empty(int(len(self.log_returns)) - start_index_test - 1)
+
+        # Loop through time series and calculate predictions with information available at t = i
+        # Loop only to lengnth(set) -1, because we need realized values for our prediciton for eval
+        for i in range(start_index_test, len(self.log_returns)-1):
+            # Initiate and Estimate model with information available at t = i
             wlsev_obj = Wlsev_model(self.log_returns[:i], self.est_var[:i], self.forecast_horizon)
             betas, std_errors, t_stats = wlsev_obj.estimate_wls_ev()
 
             # Predict r_(t+1)
             if self.forecast_horizon ==1:
-                log_return_predict_wlsev[i-int(len(self.log_returns)*2/3)] = betas[0] * self.log_returns[i]
-            else:
-                # TODO: Implement overlapping prediction
+                log_return_predict_wlsev[i-start_index_test] = betas[0] * self.log_returns[i]
+            #else:
+                # TODO: Implement cummulative, overlapping prediction
+
         return log_return_predict_wlsev
+
 
     def benchmark_predict(self):
         #
@@ -219,14 +227,22 @@ class Wlsev_model(object):
         #   Predict values based on mean of known values
         #
 
-        # Initialize result array
-        log_return_predict_benchmark = np.empty(len(range(int(len(self.log_returns) * 2 / 3), len(self.log_returns))))
+        # Get time series index for split train/test set
+        start_index_test = int(len(self.log_returns)*2/3)
+
+        # Initialize result array with the length of test set -1 = length set - length training set - 1
+        log_return_predict_benchmark = np.empty(int(len(self.log_returns)) - start_index_test - 1)
 
         # Loop through time series
-        for i in range(int(len(self.log_returns)*2/3), len(self.log_returns)):
+        for i in range(start_index_test, len(self.log_returns)-1):
             # Predict r_(t+1)
-            log_return_predict_benchmark[i-int(len(self.log_returns)*2/3)] = np.mean(self.log_returns[:i])
+            if self.forecast_horizon == 1:
+                log_return_predict_benchmark[i-start_index_test] = np.mean(self.log_returns[:i])
+            #else:
+                # TODO: Implement cummulative, overlapping prediction
+
         return log_return_predict_benchmark
+
 
     def wls_ev_eval(self):
         #
@@ -243,11 +259,11 @@ class Wlsev_model(object):
         # define start index test set
         start_test_set = int(len(self.log_returns)*2/3)
 
-        # Calculate MSE of wls-ev prediction
-        mse_wlsev = np.mean((self.log_returns[start_test_set:]-log_return_predict_wlsev) ** 2)
+        # Calculate MSE of wls-ev prediction, start at (test set index)+1, as prediction one period ahead
+        mse_wlsev = np.mean((self.log_returns[start_test_set+1:]-log_return_predict_wlsev) ** 2)
 
-        # Calculate MSE of benchmark prediction
-        mse_benchmark = np.mean((self.log_returns[start_test_set:]-log_return_predict_benchmark) ** 2)
+        # Calculate MSE of benchmark prediction, start at (test set index)+1, as prediction one period ahead
+        mse_benchmark = np.mean((self.log_returns[start_test_set+1:]-log_return_predict_benchmark) ** 2)
 
         # Calculate out of sample r-squared
         oos_r_squared = 1 - (mse_wlsev/mse_benchmark)
@@ -256,6 +272,8 @@ class Wlsev_model(object):
         print("WLS-EV Evaluation")
         print('Forecast Horizon: {}'.format(self.forecast_horizon))
         print("-------------------------------------------------------------------------------------------------------")
+        print("Benchmark model OOS MSE: {}".format(mse_benchmark))
+        print("WLS-EV model OOS MSE: {}".format(mse_wlsev))
         print("Out of sample R_squared: {}".format(oos_r_squared))
         print("-------------------------------------------------------------------------------------------------------")
 

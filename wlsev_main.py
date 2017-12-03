@@ -113,7 +113,3 @@ betas, std_errors, t_stats = wlsev_obj.estimate_wls_ev()
 # evaluation to get MSEs and Rsquared
 r_squared = wlsev_obj.wls_ev_eval()
 
-
-
-
-
