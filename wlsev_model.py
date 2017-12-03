@@ -3,8 +3,7 @@
 
 # Import packages for econometric analysis
 import numpy as np
-import pandas as pd
-import statsmodels as sm
+from helper_functions import rolling_sum
 
 # Import plotting library
 import matplotlib
@@ -240,6 +239,7 @@ class Wlsev_model(object):
                 log_return_predict_benchmark[i-start_index_test] = np.mean(self.log_returns[:i])
             #else:
                 # TODO: Implement cummulative, overlapping prediction
+                log_return_predict_benchmark[i - start_index_test] = np.mean(self.log_returns[:i])
 
         return log_return_predict_benchmark
 
