@@ -74,11 +74,14 @@ class Wlsev_model(object):
         # Get vol from var through square root and delete last row of series to adjust dimensionality
         est_var_dim_adj  = self.est_var[:-1]**0.5
 
-        # X = X_t/sigma2_t, no constant since constant is already in X_t, delete last row to adjust for dimensionality
-        X = self.log_returns[:-1]/est_var_dim_adj
+        # X = X_t/sigma2_t, delete last row to adjust for dimensionality
+        X = self.log_returns[:-1]
 
         # add OLS constant
         X = sm.add_constant(X)
+
+        # divide by variance
+        X = X/est_var_dim_adj[:, None]
 
         # Y = r_(t+1)/sigma2_t
         Y = self.log_returns[1:]/est_var_dim_adj
@@ -87,6 +90,7 @@ class Wlsev_model(object):
         wlsev_reg_model = sm.OLS(Y, X)
         wlsev = wlsev_reg_model.fit()  # Fit the model
 
+        print(wlsev.summary())
 
         # Error Statistics
         # --------------------------------------------------------------------------------
