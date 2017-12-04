@@ -77,6 +77,9 @@ class Wlsev_model(object):
         # X = X_t/sigma2_t, no constant since constant is already in X_t, delete last row to adjust for dimensionality
         X = self.log_returns[:-1]/est_var_dim_adj
 
+        # add OLS constant
+        X = sm.add_constant(X)
+
         # Y = r_(t+1)/sigma2_t
         Y = self.log_returns[1:]/est_var_dim_adj
 
@@ -213,7 +216,7 @@ class Wlsev_model(object):
             # Predict r_(t+1)
             if self.forecast_horizon ==1:
                 # no constant for day ahead prediction
-                log_return_predict_wlsev[i-start_index_test] = betas[0] * self.log_returns[i]
+                log_return_predict_wlsev[i-start_index_test] = betas[0] + betas[1] * self.log_returns[i]
             else:
                 # with constant beta0, beta1 * last available value
                 log_return_predict_wlsev[i-start_index_test] = betas[0] + betas[1] * self.log_returns[i]

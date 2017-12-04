@@ -1,7 +1,8 @@
 import numpy as np
 
 def rolling_sum(a, n) :
-    # calculate rolling sum (= cummulative returns) of log return series a
+    # calculate rolling sum (= cummulative returns) of log return series
+    # rolling sum length = forecast horizon forward looking
     # @params
     #   a: log return series
     #   n: forecast horizon
