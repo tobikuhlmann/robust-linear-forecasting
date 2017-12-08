@@ -1,11 +1,9 @@
+"""
+KIT CRAM Seminar WS17/18
+Algorithmic Design - Least squares estimates weighted by ex-ante return variance (WLS-EV)
+"""
 
-#
-# ============================================================================
-# KIT CRAM Seminar WS17/18
-# @author Tobias Kuhlmann
-# Algorithmic Design - Least squares estimates weighted by ex-ante return variance (WLS-EV)
-# ============================================================================
-#
+__author__ = 'Tobias Kuhlmann'
 
 # Import packages
 from variance_estimation import ExAnteVariance
@@ -13,18 +11,18 @@ from wlsev_model import Wlsev_model
 import numpy as np
 import pandas as pd
 import matplotlib
+
 matplotlib.use
 import matplotlib.pyplot as plt
+
 matplotlib.style.use('ggplot')
-
-
 
 # Data Import and Transformation
 # ==================================================
 
 # Import price data and calc log returns
 # --------------------------------------------------
-es_50_prices = pd.read_csv('es50_prices.csv', parse_dates = True)
+es_50_prices = pd.read_csv('es50_prices.csv', parse_dates=True)
 
 # Delete unnecessary columns
 del es_50_prices['openprice']
@@ -41,7 +39,6 @@ es_50_prices = es_50_prices.set_index('date')
 es_50_logret = es_50_prices
 es_50_logret['logreturns'] = np.log(es_50_prices['lastprice'] / es_50_prices['lastprice'].shift(1))
 
-
 # Import vol data
 # --------------------------------------------------
 es_50_vol = pd.read_csv('es50_volatility.csv', parse_dates=True)
@@ -57,7 +54,6 @@ es_50_vol['volatility'] = es_50_vol['volatility'] ** 2
 # set index, rename and check
 es_50_vol = es_50_vol.rename(columns={'loctimestamp': 'date'})
 es_50_vol = es_50_vol.set_index('date')
-
 
 # Import implied volatility
 # --------------------------------------------------
@@ -80,7 +76,6 @@ es_50_imp_vol = es_50_imp_vol.set_index('date')
 # join vol and implied vol
 es_50_imp_vol = es_50_vol.join(es_50_imp_vol['implied_vol']).dropna()
 
-
 # Model and Analysis
 # ==================================================
 #
@@ -91,12 +86,11 @@ es_50_imp_vol = es_50_vol.join(es_50_imp_vol['implied_vol']).dropna()
 # no implied vol
 ea_var_obj = ExAnteVariance(es_50_vol)
 # implied vol exists
-#ea_var_obj = ExAnteVariance(es_50_imp_vol, es_50_imp_vol['implied_vol'])
+# ea_var_obj = ExAnteVariance(es_50_imp_vol, es_50_imp_vol['implied_vol'])
 
 # Estimate Variance
 result = ea_var_obj.estimate_variance()
 result = result.dropna()
-
 
 # 2. least squares estimates weighted by ex-ante return variance (WLS-EV) using Johnson (2016)
 # ------------------------------------------------------------------------------------------------------------
@@ -105,7 +99,8 @@ wlsev_var_rets = es_50_logret.join(result).dropna()
 # set forecast_horizon
 forecast_horizon = 252
 # Instantiate object
-wlsev_obj = Wlsev_model(wlsev_var_rets['logreturns'].as_matrix(), wlsev_var_rets['vol_daily_est'].as_matrix(), forecast_horizon)
+wlsev_obj = Wlsev_model(wlsev_var_rets['logreturns'].as_matrix(), wlsev_var_rets['vol_daily_est'].as_matrix(),
+                        forecast_horizon)
 
 # fit model
 betas, std_errors, t_stats = wlsev_obj.estimate_wls_ev()

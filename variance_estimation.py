@@ -1,32 +1,30 @@
+__author__ = 'Tobias Kuhlmann'
 
-# Imports
-
-# Import packages for econometric analysis
 import numpy as np
 import pandas as pd
 import statsmodels as sm
 import statsmodels.formula.api as smf
 
-# Import plotting library
 import matplotlib
 import matplotlib.pyplot as plt
+
 matplotlib.style.use('ggplot')
 
 
 class ExAnteVariance(object):
-    #
-    # DESCRIPTION:
-    #   This class implements the first wls-ev step:
-    #   Estimate  sigma_t^2, the conditional variance of next-period unexpected returns ✏t+1.
-    #
-    # METHODS:
-    #   'init'               : Initialization of the object with the es50 volatility data
-    #   'estimate_variance'  : Estimate (sigma_t)2, the (ex ante) conditional variance of next-period unexpected
-    #                          returns epsilon_(t+1) using a HAR-RV (Hierachical Autoregressive-Realized Variance)
-    #                          Model from Corsi (2009)
-    #
 
-    def __init__(self, vol, implied_vol = None):
+    """
+    This class implements the first wls-ev step:
+      Estimate  sigma_t^2, the conditional variance of next-period unexpected returns ✏t+1.
+
+    METHODS:
+      'init'               : Initialization of the object with the es50 volatility data
+      'estimate_variance'  : Estimate (sigma_t)2, the (ex ante) conditional variance of next-period unexpected
+                             returns epsilon_(t+1) using a HAR-RV (Hierachical Autoregressive-Realized Variance)
+                             Model from Corsi (2009)
+    """
+
+    def __init__(self, vol, implied_vol=None):
         #
         # DESCRIPTION:
         #   Initialize object with es50 volatility
@@ -52,7 +50,7 @@ class ExAnteVariance(object):
         self.vol['vol_weekly'] = self.vol['vol_daily'].rolling(window=5, center=False).mean()
         # explanatory variable3: calculate rolling average volatility monthly
         self.vol['vol_monthly'] = self.vol['vol_daily'].rolling(window=22, center=False).mean()
-       # print(self.vol.head())
+        # print(self.vol.head())
 
         # Detect, delete print rows with nan
         self.nan = self.vol[self.vol.isnull().any(axis=1)]
@@ -75,7 +73,8 @@ class ExAnteVariance(object):
         else:
             # Corsi (2009) HAR-EV Model: RV_(t+1d)(d)=c+beta(d)*RV_t(d)+beta(imp)*IMPV_t(d)+beta(w)*RV_t(w)+beta(m)*RV_t(m)+w_(t+1d)(d)
             # fit regression model
-            self.ols_res = smf.ols(formula="vol_daily_est ~ vol_daily + implied_vol + vol_weekly + vol_monthly", data=self.vol).fit()
+            self.ols_res = smf.ols(formula="vol_daily_est ~ vol_daily + implied_vol + vol_weekly + vol_monthly",
+                                   data=self.vol).fit()
             print("Variance Estimation Results")
             print(self.ols_res.summary())
             # predict with fitted regression model
@@ -83,6 +82,6 @@ class ExAnteVariance(object):
             print('Variance estimated!')
 
         # plot
-        #self.vol.plot(subplots=True)
+        # self.vol.plot(subplots=True)
 
         return self.vol['vol_daily_est']
