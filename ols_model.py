@@ -5,7 +5,7 @@ from scipy.stats import f, skew, kurtosis
 import matplotlib.pyplot as plt
 
 
-class Influence:
+class OLS:
     def __init__(self, X, y, neweyWestLags=None, sampleSplit=0.7):
         """
         Represents an influence between a set of influencers and an influenced variable.
@@ -71,7 +71,7 @@ class Influence:
             self.lin_out_fp = 1 - self.lin_out_fp
 
 
-    def printResults(self, X_name=[""], y_name=""):
+    def printResults(self):
         """
         Prints out several information items for the influence. The influence must have been fitted priorly. Some
         information, like model fit charts or kernel regression, is only performed if the X variable of the influence
@@ -117,6 +117,6 @@ if __name__ == "__main__":
     x = np.abs(np.random.uniform(0, 5, size=1000))
     # x = np.linspace(0, 5, 1000)
     y = 0.7 * x ** 2 + np.random.normal(loc=0, scale=0.2, size=1000)
-    inf = Influence(x, y)
+    inf = OLS(x, y)
     inf.fit()
-    inf.printResults(X_name=["X"], y_name="y")
+    inf.printResults()

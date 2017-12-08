@@ -8,6 +8,8 @@ __author__ = 'Tobias Kuhlmann'
 # Import packages
 from variance_estimation import ExAnteVariance
 from wlsev_model import Wlsev_model
+from ols_model import OLS
+
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -91,19 +93,21 @@ ea_var_obj = ExAnteVariance(es_50_vol)
 # Estimate Variance
 result = ea_var_obj.estimate_variance()
 result = result.dropna()
+# Join returns and estimated variance
+wlsev_var_rets = es_50_logret.join(result).dropna()
+
 
 # 2. least squares estimates weighted by ex-ante return variance (WLS-EV) using Johnson (2016)
 # ------------------------------------------------------------------------------------------------------------
-# Join returns and estimated variance
-wlsev_var_rets = es_50_logret.join(result).dropna()
+
 # set forecast_horizon
 forecast_horizon = 252
 # Instantiate object
-wlsev_obj = Wlsev_model(wlsev_var_rets['logreturns'].as_matrix(), wlsev_var_rets['vol_daily_est'].as_matrix(),
-                        forecast_horizon)
-
-# fit model
-betas, std_errors, t_stats = wlsev_obj.estimate_wls_ev()
-
+wlsev_obj = Wlsev_model(wlsev_var_rets['logreturns'][:-1].as_matrix(), wlsev_var_rets['logreturns'][1:].as_matrix(), wlsev_var_rets['vol_daily_est'][:-1].as_matrix(), forecast_horizon)
+# fit wls-ev model
+wlsev_obj.fit()
 # OOS evaluation to get MSEs and Rsquared
-r_squared = wlsev_obj.wls_ev_eval()
+wlsev_obj.evaluate()
+# print results
+wlsev_obj.print_results()
+
