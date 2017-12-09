@@ -40,6 +40,9 @@ class Wlsev_model(object):
         self.mse_benchmark = None
         self.mse_wlsev = None
         self.oos_r_squared = None
+        self.rmse_in_sample = None
+        self.var_in_sample = None
+        self.in_sample_r_squared = None
 
         print('WLS-EV Regression Object initialized!')
 
@@ -131,7 +134,6 @@ class Wlsev_model(object):
 
         # Predict with wls-ev
         log_return_predict_wlsev = self.wls_ev_predict()
-
         # Predict with benchmark approach mean
         log_return_predict_benchmark = self.benchmark_predict()
 
@@ -140,21 +142,37 @@ class Wlsev_model(object):
 
         # Different methods for cummulativa vs day-ahead forecasting
         if self.forecast_horizon == 1:
+            # Out of sample
             # Calculate MSE of wls-ev prediction, start at (test set index)+1, as prediction one period ahead
             self.mse_wlsev = np.mean((self.X[start_test_set + 1:] - log_return_predict_wlsev) ** 2)
             # Calculate MSE of benchmark prediction, start at (test set index)+1, as prediction one period ahead
             self.mse_benchmark = np.mean((self.X[start_test_set + 1:] - log_return_predict_benchmark) ** 2)
+
+            # In sample
+            lin_residuals_in_sample = self.y[:start_test_set-1] - (self.betas[0] + np.dot(self.X[:start_test_set-1], self.betas[1]))
+            self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
+            self.var_in_sample = np.var(self.y[:start_test_set-1])
+
         else:
             # calculate realized cummulative returns over forecast horizon sequences, start at (test set index)+1, as prediction one period ahead
             cum_rets_realized = rolling_sum(self.X[start_test_set + 1:], self.forecast_horizon)
+
+            # Out of sample
             # Calculate MSE of wls-ev prediction, only where realized values are available
             self.mse_wlsev = np.mean((cum_rets_realized - log_return_predict_wlsev[:-self.forecast_horizon + 1]) ** 2)
             # Calculate MSE of benchmark prediction, only where realized values are available
             self.mse_benchmark = np.mean(
                 (cum_rets_realized - log_return_predict_benchmark[:-self.forecast_horizon + 1]) ** 2)
 
+            # In Sample
+            lin_residuals_in_sample = rolling_sum(self.y[:start_test_set-1], self.forecast_horizon) - (self.betas[0] + np.dot(self.X[:start_test_set-self.forecast_horizon], self.betas[1]))
+            self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
+            self.var_in_sample = np.var(rolling_sum(self.y[:start_test_set-1], self.forecast_horizon))
+
         # Calculate out of sample r-squared
         self.oos_r_squared = 1 - (self.mse_wlsev / self.mse_benchmark)
+        # Calculate in sample r-squared
+        self.in_sample_r_squared = 1.0 - (self.rmse_in_sample ** 2) / self.var_in_sample
 
     def wls_ev_predict(self):
         """
@@ -216,12 +234,11 @@ class Wlsev_model(object):
         print("WLS-EV Estimation Results")
         print('Forecast Horizon: {}'.format(self.forecast_horizon))
         print("-------------------------------------------------------------------------------------------------------")
-        print("betas: {}".format(self.betas))
-        print("bse standard errors: {}".format(self.std_errors))
-        print("t-stats: {}".format(self.t_stats))
-        print("Benchmark model OOS MSE: {}".format(self.mse_benchmark))
-        print("WLS-EV model OOS MSE: {}".format(self.mse_wlsev))
-        print("Out of sample R_squared: {}".format(self.oos_r_squared))
+        print("betas: {}".format(np.around(self.betas,4)))
+        print("bse standard errors: {}".format(np.around(self.std_errors,4)))
+        print("t-stats: {}".format(np.around(self.t_stats,4)))
+        print("In sample R_squared: {}".format(round(self.in_sample_r_squared,4)))
+        print("Out of sample R_squared: {}".format(round(self.oos_r_squared,4)))
         print("-------------------------------------------------------------------------------------------------------")
 
     def get_results(self):

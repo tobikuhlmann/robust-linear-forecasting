@@ -10,6 +10,7 @@ from variance_estimation import ExAnteVariance
 from wlsev_model import Wlsev_model
 from ols_model import OLS
 
+
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -101,7 +102,7 @@ wlsev_var_rets = es_50_logret.join(result).dropna()
 # ------------------------------------------------------------------------------------------------------------
 
 # set forecast_horizon
-forecast_horizon = 252
+forecast_horizon = 1
 # Instantiate object
 wlsev_obj = Wlsev_model(wlsev_var_rets['logreturns'][:-1].as_matrix(), wlsev_var_rets['logreturns'][1:].as_matrix(), wlsev_var_rets['vol_daily_est'][:-1].as_matrix(), forecast_horizon)
 # fit wls-ev model
@@ -110,4 +111,9 @@ wlsev_obj.fit()
 wlsev_obj.evaluate()
 # print results
 wlsev_obj.print_results()
+
+# Get OLS estimation results
+ols_model = OLS(wlsev_var_rets['logreturns'][:-1].as_matrix(), wlsev_var_rets['logreturns'][1:].as_matrix())
+ols_model.fit()
+ols_model.printResults()
 
