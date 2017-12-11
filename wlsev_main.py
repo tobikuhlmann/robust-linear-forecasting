@@ -8,7 +8,8 @@ __author__ = 'Tobias Kuhlmann'
 # Import packages
 from variance_estimation import ExAnteVariance
 from wlsev_model import Wlsev_model
-from ols_model import OLS
+from ols_model import OLS_model
+from simon_ols_model import OLS
 
 
 import numpy as np
@@ -25,7 +26,7 @@ matplotlib.style.use('ggplot')
 
 # Import price data and calc log returns
 # --------------------------------------------------
-es_50_prices = pd.read_csv('es50_prices.csv', parse_dates=True)
+es_50_prices = pd.read_csv('data/es50_prices.csv', parse_dates=True)
 
 # Delete unnecessary columns
 del es_50_prices['openprice']
@@ -44,7 +45,7 @@ es_50_logret['logreturns'] = np.log(es_50_prices['lastprice'] / es_50_prices['la
 
 # Import vol data
 # --------------------------------------------------
-es_50_vol = pd.read_csv('es50_volatility.csv', parse_dates=True)
+es_50_vol = pd.read_csv('data/es50_volatility.csv', parse_dates=True)
 # Transform dates
 es_50_vol['loctimestamp'] = pd.to_datetime(es_50_vol['loctimestamp'])
 
@@ -60,7 +61,7 @@ es_50_vol = es_50_vol.set_index('date')
 
 # Import implied volatility
 # --------------------------------------------------
-es_50_imp_vol = pd.read_csv('es50_implied_volatility.csv', parse_dates=True)
+es_50_imp_vol = pd.read_csv('data/es50_implied_volatility.csv', parse_dates=True)
 
 # Transform dates
 es_50_imp_vol['loctimestamp'] = pd.to_datetime(es_50_imp_vol['loctimestamp'])
@@ -102,18 +103,25 @@ wlsev_var_rets = es_50_logret.join(result).dropna()
 # ------------------------------------------------------------------------------------------------------------
 
 # set forecast_horizon
-forecast_horizon = 1
-# Instantiate object
+forecast_horizon = 252
+
+# WLS-EV
 wlsev_obj = Wlsev_model(wlsev_var_rets['logreturns'][:-1].as_matrix(), wlsev_var_rets['logreturns'][1:].as_matrix(), wlsev_var_rets['vol_daily_est'][:-1].as_matrix(), forecast_horizon)
-# fit wls-ev model
 wlsev_obj.fit()
-# OOS evaluation to get MSEs and Rsquared
+# OOS evaluation to get Rsquared
 wlsev_obj.evaluate()
-# print results
 wlsev_obj.print_results()
 
-# Get OLS estimation results
-ols_model = OLS(wlsev_var_rets['logreturns'][:-1].as_matrix(), wlsev_var_rets['logreturns'][1:].as_matrix())
-ols_model.fit()
-ols_model.printResults()
+# OLS
+ols_obj = OLS_model(wlsev_var_rets['logreturns'][:-1].as_matrix(), wlsev_var_rets['logreturns'][1:].as_matrix(), forecast_horizon)
+ols_obj.fit()
+# OOS evaluation to get Rsquared
+ols_obj.evaluate()
+ols_obj.print_results()
+
+# Get Simon's OLS estimation results
+if forecast_horizon == 1:
+    ols_model = OLS(wlsev_var_rets['logreturns'][:-1].as_matrix(), wlsev_var_rets['logreturns'][1:].as_matrix())
+    ols_model.fit()
+    ols_model.printResults()
 

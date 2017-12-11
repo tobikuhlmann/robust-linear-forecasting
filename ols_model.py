@@ -1,122 +1,234 @@
-__author__ = 'Simon Walther'
+__author__ = 'Tobias Kuhlmann'
 
 import numpy as np
-from scipy.stats import f, skew, kurtosis
+import pandas as pd
+import statsmodels.api as sm
+
+import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.style.use('ggplot')
+
+from helper_functions import rolling_sum
 
 
-class OLS:
-    def __init__(self, X, y, neweyWestLags=None, sampleSplit=0.7):
+class OLS_model(object):
+    """
+    This class implements OLS evaluation for overlapping and non-overlapping returns:
+    Estimate return regression WLS-EV beta using Johnson
+
+    METHODS:
+      'init'                              : Initialization of the object with the dependent and independent regression variables
+      'fit'                               : Estimate OLS regression
+    """
+
+    def __init__(self, X, y, forecast_horizon):
+        '''
+        Initialize object with es50 data
+        '''
+
+        self.X = X
+        self.y = y
+        self.forecast_horizon = forecast_horizon
+
+        self.betas = None
+        self.std_errors = None
+        self.t_stats = None
+
+        self.mse_benchmark = None
+        self.mse_ols = None
+        self.oos_r_squared = None
+        self.rmse_in_sample = None
+        self.var_in_sample = None
+        self.in_sample_r_squared = None
+
+        #print('WLS-EV Regression Object initialized!')
+
+    def fit(self, summary = False):
         """
-        Represents an influence between a set of influencers and an influenced variable.
-
-        :param X: numpy matrix. TxN. T number of time indices, N number of influencers
-        :param y: numpy vector. Influenced variables.
-        :param neweyWestLags: int. Number of lags used for the Newey-West correction. If None, 4 * (T/100)^(2/9) will be used.
-        :param nearestNeighbor: int. Defines, which nearest neighbor will be used in the bandwidth selection for the
-                                kernel regression.
-        :param kernel: string. Kernel that is used in the kernel regression. Can be: "gaussian"
-        :param kernelConfidence: float. Confidence level for the kernel regression confidence intervals.
-        :param sampleSplit: float. Portion of the time series that is used for in-sample estimation. The first portion of
-                            the inputs will be used for the in-sample series. The remaining part is used as out-of-sample
-                            part. Daily model reestimation will be performed.
+        Estimate ols with correct function, depending on forecast horizon if returns are overlapping
         """
-        usedX = X.copy()
-        if len(usedX.shape) == 1:
-            usedX = usedX.reshape((usedX.shape[0], 1))
-        self.X = np.concatenate((np.ones((usedX.shape[0], 1)), usedX), axis=1)
-        self.T = usedX.shape[0]
-        self.N = usedX.shape[1] + 1
-        self.y = y.reshape((self.T, 1))
-        if neweyWestLags == None:
-            neweyWestLags = int(round(4 * ((self.T / 100.0) ** (2.0 / 9.0)), 0))
-        self.neweyWestLags = neweyWestLags
-        self.sampleSplit = sampleSplit
+        if self.forecast_horizon == 1:
+            # non-overlapping returns
+            # Regress Y = r_(t+1) on X=X_t
 
-    def fit(self):
-        """
-        Performs fitting of the models. After fitting the results are stored in the Influence object and can be printed by
-        using the printResults version.
-        """
-        # In-sample linear regression
-        self.beta = self._linreg(self.X, self.y)
-        self.linresid_in = self.y - np.dot(self.X, self.beta)
-        self.beta_cov = self._calcBetaCov(self.X, self.linresid_in)
-        self.beta_se = np.ones(self.beta.shape)
-        for i in range(0, self.beta.shape[0]):
-            self.beta_se[i, 0] = (self.beta_cov[i, i] / self.T) ** 0.5
-        self.lin_in_rmse = np.mean(self.linresid_in ** 2) ** 0.5
-        self.lin_in_r2 = 1.0 - (self.lin_in_rmse ** 2) / np.var(self.y)
-        self.lin_in_residskew = skew(self.linresid_in)
-        self.lin_in_residexcesskurt = kurtosis(self.linresid_in)
-        fstat = np.var(self.y, ddof=1) / (np.sum(self.linresid_in ** 2) / (self.T - 1))
-        self.lin_in_fp = f.cdf(fstat, self.T - 1, self.T - 1)
-        if self.lin_in_fp > 0.5:
-            self.lin_in_fp = 1 - self.lin_in_fp
+            # X = X_t, delete last row to adjust for dimensionality
+            X = self.X
+            # add OLS constant
+            X = sm.add_constant(X)
+            # Y = r_(t+1)/sigma2_t
+            y = self.y
+            # Next, run ols regression to estimate the ols parameters
+            ols_reg_model = sm.OLS(y, X)
+            ols = ols_reg_model.fit()  # Fit the model
 
-        # Out-of-sample linear regression
-        separationIndex = int(round(self.T * self.sampleSplit))
-        out_linresid = np.zeros((self.y.shape[0] - separationIndex,))
-        for j in range(separationIndex, self.y.shape[0]):
-            beta = self._linreg(self.X[:j, :], self.y[:j])
-            out_linresid[j - separationIndex] = self.y[j] - np.dot(self.X[j:(j + 1), :], beta)
-        self.lin_out_rmse = np.mean(out_linresid ** 2) ** 0.5
-        self.lin_out_r2 = 1.0 - (self.lin_out_rmse ** 2) / np.var(self.y[separationIndex:])
-        self.lin_out_residskew = skew(out_linresid)
-        self.lin_out_residexcesskurt = kurtosis(out_linresid)
-        fstat = np.var(self.y[separationIndex:], ddof=1) / (np.sum(out_linresid ** 2) / (out_linresid.shape[0] - 1))
-        self.lin_out_fp = f.cdf(fstat, out_linresid.shape[0] - 1, out_linresid.shape[0] - 1)
-        self.linresid_out = out_linresid
-        if self.lin_out_fp > 0.5:
-            self.lin_out_fp = 1 - self.lin_out_fp
+            # Error Statistics
+            # Get robust standard errors Newey West (1987) with 6 lags
+            robust_standard_errors = ols.get_robustcov_results(cov_type='HAC', maxlags=6)
+            # betas
+            self.betas = robust_standard_errors.params
+            # standard errors
+            self.std_errors = robust_standard_errors.bse
+            # t-statistics
+            self.t_stats = self.betas / self.std_errors
 
-
-    def printResults(self):
-        """
-        Prints out several information items for the influence. The influence must have been fitted priorly. Some
-        information, like model fit charts or kernel regression, is only performed if the X variable of the influence
-        is 1D.
-        """
-
-        # Print Results
-        print("OLS Evaluation")
-        print("-------------------------------------------------------------------------------------------------------")
-        print("OLS betas: {}".format(self.beta))
-        print("OLS betas standard errors: {}".format(self.beta_se))
-        print("In sample R_squared: {}".format(round(self.lin_in_r2, 4)))
-        print("Out of sample R_squared: {}".format(round(self.lin_out_r2, 4)))
-        print("-------------------------------------------------------------------------------------------------------")
-
-
-    def _linreg(self, X, y):
-        beta = np.dot(np.dot(np.linalg.solve(np.dot(X.T, X), np.identity(X.shape[1])), X.T), y)
-        return beta
-
-    def _calcSigma(self, X, resid, j):
-        h = X.T * np.repeat(resid.T, X.shape[1], axis=0)
-        if j == 0:
-            sigma = np.dot(h, h.T) / float(X.shape[0])
         else:
-            sigma = np.dot(h[:, j:], h[:, :-j].T) / float(X.shape[0])
-        return sigma
+            # overlapping returns
+            # Regress Y = r_(t+1) on X=HodrickSum
 
-    def _calcBetaCov(self, X, resid):
-        HAC = self._calcSigma(X, resid, 0)
-        for j in range(1, self.neweyWestLags):
-            sigma_j = self._calcSigma(X, resid, j)
-            HAC += (1.0 - float(j) / float(self.neweyWestLags + 1)) * (sigma_j + sigma_j.T)
-        Q = np.dot(X.T, X) / self.T
-        Q_inv = np.linalg.solve(Q, np.identity(self.N))
-        beta_cov = np.dot(np.dot(Q_inv, HAC), Q_inv)
-        return beta_cov
+            # X = HodrickSum(X)
+            # Initialize X(t)
+            X = self.X[self.forecast_horizon - 1:]
+            # Stack X and X(t-1) + X(t-2) + ... + X(t-(forecast horizon-1))
+            for i in range(1, self.forecast_horizon):
+                X = np.vstack((X, self.X[(self.forecast_horizon - (1 + i)):-i]))
+            # Transpose X to get correct OLS dimensions
+            X = np.transpose(X)
+            X = np.sum(X, axis=1).reshape((X.shape[0], 1))
+            # Calculate variances for scaling
+            # Calculate Var(x_t_rolling): Variance of rolling sum
+            Var_x_t_rolling = X.var()
+            # Calculate Var(x_t): Variance of log return series x_t
+            Var_x_t = self.X.var()
+            # add OLS constant
+            X = sm.add_constant(X)
+            # Y = r_(t+1)/sigma2_t
+            y = self.y[self.forecast_horizon-1:]
+            y = np.transpose(y)
+            # Next, run ols regression to estimate the ols parameters
+            ols_reg_model = sm.OLS(y, X)
+            ols = ols_reg_model.fit()  # Fit the model
 
+            # Error Statistics
+            # Get robust standard errors Newey West (1987) with 6 lags
+            robust_standard_errors = ols.get_robustcov_results(cov_type='HAC', maxlags=6)
+            # robust_standard_errors.summary()
 
+            # 2. Scale the resulting coefficients and standard errors
+            # Scale Var_x_t_rolling/Var_x_t
+            scale = Var_x_t_rolling / Var_x_t
+            # Scale betas
+            self.betas = scale * robust_standard_errors.params
+            # Scale standard errors
+            self.std_errors = scale * robust_standard_errors.bse
+            # t-statistic
+            self.t_stats = self.betas / self.std_errors
 
-if __name__ == "__main__":
-    # x = np.abs(np.random.normal(size = 1000))
-    x = np.abs(np.random.uniform(0, 5, size=1000))
-    # x = np.linspace(0, 5, 1000)
-    y = 0.7 * x ** 2 + np.random.normal(loc=0, scale=0.2, size=1000)
-    inf = OLS(x, y)
-    inf.fit()
-    inf.printResults()
+    def evaluate(self):
+        """
+        evaluate predictions based on estimated ols mode
+        """
+
+        # Predict with ols
+        log_return_predict_ols = self.ols_predict()
+        # Predict with benchmark approach mean
+        log_return_predict_benchmark = self.benchmark_predict()
+
+        # define start index test set
+        start_test_set = int(len(self.X) * 2 / 3)
+
+        # Different methods for cummulativa vs day-ahead forecasting
+        if self.forecast_horizon == 1:
+            # Out of sample
+            # Calculate MSE of ols prediction, start at (test set index)+1, as prediction one period ahead
+            self.mse_ols = np.mean((self.X[start_test_set + 1:] - log_return_predict_ols) ** 2)
+            # Calculate MSE of benchmark prediction, start at (test set index)+1, as prediction one period ahead
+            self.mse_benchmark = np.mean((self.X[start_test_set + 1:] - log_return_predict_benchmark) ** 2)
+
+            # In sample
+            lin_residuals_in_sample = self.y[:start_test_set-1] - (self.betas[0] + np.dot(self.X[:start_test_set-1], self.betas[1]))
+            self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
+            self.var_in_sample = np.var(self.y[:start_test_set-1])
+
+        else:
+            # calculate realized cummulative returns over forecast horizon sequences, start at (test set index)+1, as prediction one period ahead
+            cum_rets_realized = rolling_sum(self.X[start_test_set + 1:], self.forecast_horizon)
+
+            # Out of sample
+            # Calculate MSE of ols prediction, only where realized values are available
+            self.mse_ols = np.mean((cum_rets_realized - log_return_predict_ols[:-self.forecast_horizon + 1]) ** 2)
+            # Calculate MSE of benchmark prediction, only where realized values are available
+            self.mse_benchmark = np.mean(
+                (cum_rets_realized - log_return_predict_benchmark[:-self.forecast_horizon + 1]) ** 2)
+
+            # In Sample
+            lin_residuals_in_sample = rolling_sum(self.y[:start_test_set-1], self.forecast_horizon) - (self.betas[0] + np.dot(self.X[:start_test_set-self.forecast_horizon], self.betas[1]))
+            self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
+            self.var_in_sample = np.var(rolling_sum(self.y[:start_test_set-1], self.forecast_horizon))
+
+        # Calculate out of sample r-squared
+        self.oos_r_squared = 1 - (self.mse_ols / self.mse_benchmark)
+        # Calculate in sample r-squared
+        self.in_sample_r_squared = 1.0 - (self.rmse_in_sample ** 2) / self.var_in_sample
+
+    def ols_predict(self):
+        """
+        Predict values based on estimated ols model
+        """
+
+        # Get time series index for split train/test set
+        start_index_test = int(len(self.y) * 2 / 3)
+
+        # Initialize result array with the length of test set -1 = length set - length training set
+        log_return_predict_ols = np.empty(int(len(self.y)) - start_index_test - 1)
+
+        # Loop through time series and calculate predictions with information available at t = i
+        # Loop only to length(set) -1, because we need realized values for our prediction for eval
+        for i in range(start_index_test, len(self.y) - 1):
+            # Initiate and Estimate model with information available at t = i
+            ols_obj = OLS_model(self.X[:i], self.y[:i], self.forecast_horizon)
+            ols_obj.fit()
+            betas, std_errors, t_stats = ols_obj.get_results()
+
+            # Predict r_(t+1)
+            if self.forecast_horizon == 1:
+                # no constant for day ahead prediction
+                log_return_predict_ols[i - start_index_test] = betas[0] + betas[1] * self.X[i]
+            else:
+                # with constant beta0, beta1 * last available value
+                log_return_predict_ols[i - start_index_test] = betas[0] + betas[1] * self.X[i]
+
+        return log_return_predict_ols
+
+    def benchmark_predict(self):
+        """
+        Predict values based on mean of known values
+        """
+
+        # Get time series index for split train/test set
+        start_index_test = int(len(self.y) * 2 / 3)
+
+        # Initialize result array with the length of test set -1 = length set - length training set - 1
+        log_return_predict_benchmark = np.empty(int(len(self.y)) - start_index_test - 1)
+
+        # Loop through time series
+        for i in range(start_index_test, len(self.y) - 1):
+            # Predict r_(t+1)
+            if self.forecast_horizon == 1:
+                log_return_predict_benchmark[i - start_index_test] = np.mean(self.y[:i])
+            else:
+                # Calculate mean of rolling sum (=cummulative log returns)
+                log_return_predict_benchmark[i - start_index_test] = np.mean(
+                    rolling_sum(self.y[:i], self.forecast_horizon))
+
+        return log_return_predict_benchmark
+
+    def print_results(self):
+        """
+        Print ols results
+        """
+
+        print("OLS Estimation Results")
+        print('Forecast Horizon: {}'.format(self.forecast_horizon))
+        print("-------------------------------------------------------------------------------------------------------")
+        print("betas: {}".format(np.around(self.betas,4)))
+        print("robust bse standard errors: {}".format(np.around(self.std_errors,4)))
+        print("t-stats: {}".format(np.around(self.t_stats,4)))
+        print("In sample R_squared: {}".format(round(self.in_sample_r_squared,4)))
+        print("Out of sample R_squared: {}".format(round(self.oos_r_squared,4)))
+        print("-------------------------------------------------------------------------------------------------------")
+
+    def get_results(self):
+        """
+        get ols results
+        """
+        return self.betas, self.std_errors, self.t_stats

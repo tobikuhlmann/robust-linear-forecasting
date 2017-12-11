@@ -17,17 +17,15 @@ class Wlsev_model(object):
     Estimate return regression WLS-EV beta using Johnson
 
     METHODS:
-      'init'                              : Initialization of the object with the es50 log return and estimated volatilityatility data
-      'estimate_wls_ev'                   : Run correct model estimation based on forecast horizon (overlapping or non-overlapping)
-      'estimate_wls_ev_non_overlapping'   : Estimate return regression beta WLS-EV using Johnson (2016) for non overlapping returns
-      'estimate_wls_ev_overlapping'       : Estimate return regression beta WLS_EV using Johnson (2016) and Hodrick (1992) to account for overlapping returns
+      'init'                              : Initialization of the object with the dependent and independent regression variables, and variance estimation
+      'fit'                               : Estimate WLS-EV regression using Johnson (2016)
     """
 
     def __init__(self, X, y, volatility, forecast_horizon):
-        #
-        # DESCRIPTION:
-        #   Initialize object with es50 data
-        #
+        '''
+        Initialize object with es50 data
+        '''
+
         self.X = X
         self.y = y
         self.est_var = volatility
@@ -44,7 +42,7 @@ class Wlsev_model(object):
         self.var_in_sample = None
         self.in_sample_r_squared = None
 
-        print('WLS-EV Regression Object initialized!')
+        #print('WLS-EV Regression Object initialized!')
 
     def fit(self, summary = False):
         """
@@ -67,8 +65,7 @@ class Wlsev_model(object):
             # Next, run ols regression to estimate the wlsev parameters
             wlsev_reg_model = sm.OLS(y, X)
             wlsev = wlsev_reg_model.fit()  # Fit the model
-            if summary == True:
-                print(wlsev.summary())
+
             # Error Statistics
             # Get robust standard errors Newey West (1987) with 6 lags
             robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
@@ -85,8 +82,8 @@ class Wlsev_model(object):
 
             # Get volatility from var through square root and delete last row of series to adjust dimensionality
             est_var_dim_adj = self.est_var[self.forecast_horizon - 1:] ** 0.5
-            # X = HodrickSum(X)/sigma2_t, no constant since constant is already in X
-            # Initialize X(t) and divide by estimated sigma_t->t+1 for wls_ev
+            # X = HodrickSum(X)/sigma2_t
+            # Initialize X(t)
             X = self.X[self.forecast_horizon - 1:]
             # Stack X and X(t-1) + X(t-2) + ... + X(t-(forecast horizon-1))
             for i in range(1, self.forecast_horizon):
@@ -109,8 +106,6 @@ class Wlsev_model(object):
             # Next, run ols regression to estimate the wlsev parameters
             wlsev_reg_model = sm.OLS(y, X)
             wlsev = wlsev_reg_model.fit()  # Fit the model
-            if summary == True:
-                print(wlsev.summary())
 
             # Error Statistics
             # Get robust standard errors Newey West (1987) with 6 lags
@@ -235,7 +230,7 @@ class Wlsev_model(object):
         print('Forecast Horizon: {}'.format(self.forecast_horizon))
         print("-------------------------------------------------------------------------------------------------------")
         print("betas: {}".format(np.around(self.betas,4)))
-        print("bse standard errors: {}".format(np.around(self.std_errors,4)))
+        print("robust bse standard errors: {}".format(np.around(self.std_errors,4)))
         print("t-stats: {}".format(np.around(self.t_stats,4)))
         print("In sample R_squared: {}".format(round(self.in_sample_r_squared,4)))
         print("Out of sample R_squared: {}".format(round(self.oos_r_squared,4)))
