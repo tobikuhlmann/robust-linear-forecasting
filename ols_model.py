@@ -179,13 +179,8 @@ class OLS_model(object):
             ols_obj.fit()
             betas, std_errors, t_stats = ols_obj.get_results()
 
-            # Predict r_(t+1)
-            if self.forecast_horizon == 1:
-                # no constant for day ahead prediction
-                log_return_predict_ols[i - start_index_test] = betas[0] + betas[1] * self.X[i]
-            else:
-                # with constant beta0, beta1 * last available value
-                log_return_predict_ols[i - start_index_test] = betas[0] + betas[1] * self.X[i]
+            # Predict r_(t+1) with constant beta0, beta1 * last available value
+            log_return_predict_ols[i - start_index_test] = betas[0] + betas[1] * self.X[i]
 
         return log_return_predict_ols
 
