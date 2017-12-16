@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.style.use('ggplot')
 
-from helper_functions import rolling_sum
+from helper_functions import rolling_sum, hodrick_sum
 
 
 class Wlsev_model(object):
@@ -82,15 +82,8 @@ class Wlsev_model(object):
 
             # Get volatility from var through square root and delete last row of series to adjust dimensionality
             est_var_dim_adj = self.est_var[self.forecast_horizon - 1:] ** 0.5
-            # X = HodrickSum(X)/sigma2_t
-            # Initialize X(t)
-            X = self.X[self.forecast_horizon - 1:]
-            # Stack X and X(t-1) + X(t-2) + ... + X(t-(forecast horizon-1))
-            for i in range(1, self.forecast_horizon):
-                X = np.vstack((X, self.X[(self.forecast_horizon - (1 + i)):-i]))
-            # Transpose X to get correct OLS dimensions
-            X = np.transpose(X)
-            X = np.sum(X, axis=1).reshape((X.shape[0], 1))
+            # X = HodrickSum(X)
+            X = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
             # Calculate variances for scaling
             # Calculate Var(x_t_rolling): Variance of rolling sum
             Var_x_t_rolling = X.var()
@@ -137,32 +130,31 @@ class Wlsev_model(object):
 
         # Different methods for cummulativa vs day-ahead forecasting
         if self.forecast_horizon == 1:
+            # In sample
+            lin_residuals_in_sample = self.y - (self.betas[0] + np.dot(self.X, self.betas[1]))
+            self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
+            self.var_in_sample = np.var(self.y[:start_test_set - 1])
+
             # Out of sample
             # Calculate MSE of wls-ev prediction, start at (test set index)+1, as prediction one period ahead
             self.mse_wlsev = np.mean((self.X[start_test_set + 1:] - log_return_predict_wlsev) ** 2)
             # Calculate MSE of benchmark prediction, start at (test set index)+1, as prediction one period ahead
             self.mse_benchmark = np.mean((self.X[start_test_set + 1:] - log_return_predict_benchmark) ** 2)
-
-            # In sample
-            lin_residuals_in_sample = self.y[:start_test_set-1] - (self.betas[0] + np.dot(self.X[:start_test_set-1], self.betas[1]))
-            self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
-            self.var_in_sample = np.var(self.y[:start_test_set-1])
-
         else:
-            # calculate realized cummulative returns over forecast horizon sequences, start at (test set index)+1, as prediction one period ahead
-            cum_rets_realized = rolling_sum(self.X[start_test_set + 1:], self.forecast_horizon)
+            # In Sample
+            lin_residuals_in_sample = rolling_sum(self.y, self.forecast_horizon) - (
+                    self.betas[0] + np.dot(self.X[:-(self.forecast_horizon - 1)], self.betas[1]))
+            self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
+            self.var_in_sample = np.var(rolling_sum(self.y[:start_test_set - 1], self.forecast_horizon))
 
             # Out of sample
+            # calculate realized cummulative returns over forecast horizon sequences, start at (test set index)+1, as prediction one period ahead
+            cum_rets_realized = rolling_sum(self.X[start_test_set + 1:], self.forecast_horizon)
             # Calculate MSE of wls-ev prediction, only where realized values are available
             self.mse_wlsev = np.mean((cum_rets_realized - log_return_predict_wlsev[:-self.forecast_horizon + 1]) ** 2)
             # Calculate MSE of benchmark prediction, only where realized values are available
             self.mse_benchmark = np.mean(
                 (cum_rets_realized - log_return_predict_benchmark[:-self.forecast_horizon + 1]) ** 2)
-
-            # In Sample
-            lin_residuals_in_sample = rolling_sum(self.y[:start_test_set-1], self.forecast_horizon) - (self.betas[0] + np.dot(self.X[:start_test_set-self.forecast_horizon], self.betas[1]))
-            self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
-            self.var_in_sample = np.var(rolling_sum(self.y[:start_test_set-1], self.forecast_horizon))
 
         # Calculate out of sample r-squared
         self.oos_r_squared = 1 - (self.mse_wlsev / self.mse_benchmark)

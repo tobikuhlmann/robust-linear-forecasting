@@ -45,73 +45,31 @@ class OLS_model(object):
 
     def fit(self, summary = False):
         """
-        Estimate ols with correct function, depending on forecast horizon if returns are overlapping
+        Estimate ols
         """
-        if self.forecast_horizon == 1:
-            # non-overlapping returns
-            # Regress Y = r_(t+1) on X=X_t
-
-            # X = X_t, delete last row to adjust for dimensionality
+        # Regress Y = r_(t+1,t+forecast_horizon) on X=X_t
+        # X = X_t
+        if self.forecast_horizon ==1:
             X = self.X
-            # add OLS constant
-            X = sm.add_constant(X)
-            # Y = r_(t+1)/sigma2_t
-            y = self.y
-            # Next, run ols regression to estimate the ols parameters
-            ols_reg_model = sm.OLS(y, X)
-            ols = ols_reg_model.fit()  # Fit the model
-
-            # Error Statistics
-            # Get robust standard errors Newey West (1987) with 6 lags
-            robust_standard_errors = ols.get_robustcov_results(cov_type='HAC', maxlags=6)
-            # betas
-            self.betas = robust_standard_errors.params
-            # standard errors
-            self.std_errors = robust_standard_errors.bse
-            # t-statistics
-            self.t_stats = self.betas / self.std_errors
-
         else:
-            # overlapping returns
-            # Regress Y = r_(t+1) on X=HodrickSum
+            X = self.X[:-(self.forecast_horizon-1)]
+        # add OLS constant
+        X = sm.add_constant(X)
+        # Y = r_(t+1)
+        y = rolling_sum(self.y, self.forecast_horizon)
+        # Next, run ols regression to estimate the ols parameters
+        ols_reg_model = sm.OLS(y, X)
+        ols = ols_reg_model.fit()  # Fit the model
 
-            # X = HodrickSum(X)
-            # Initialize X(t)
-            X = self.X[self.forecast_horizon - 1:]
-            # Stack X and X(t-1) + X(t-2) + ... + X(t-(forecast horizon-1))
-            for i in range(1, self.forecast_horizon):
-                X = np.vstack((X, self.X[(self.forecast_horizon - (1 + i)):-i]))
-            # Transpose X to get correct OLS dimensions
-            X = np.transpose(X)
-            X = np.sum(X, axis=1).reshape((X.shape[0], 1))
-            # Calculate variances for scaling
-            # Calculate Var(x_t_rolling): Variance of rolling sum
-            Var_x_t_rolling = X.var()
-            # Calculate Var(x_t): Variance of log return series x_t
-            Var_x_t = self.X.var()
-            # add OLS constant
-            X = sm.add_constant(X)
-            # Y = r_(t+1)/sigma2_t
-            y = self.y[self.forecast_horizon-1:]
-            y = np.transpose(y)
-            # Next, run ols regression to estimate the ols parameters
-            ols_reg_model = sm.OLS(y, X)
-            ols = ols_reg_model.fit()  # Fit the model
-
-            # Error Statistics
-            # Get robust standard errors Newey West (1987) with 6 lags
-            robust_standard_errors = ols.get_robustcov_results(cov_type='HAC', maxlags=6)
-            # robust_standard_errors.summary()
-
-            # 2. Scale the resulting coefficients and standard errors
-            # Scale Var_x_t_rolling/Var_x_t
-            scale = Var_x_t_rolling / Var_x_t
-            # Scale betas
-            self.betas = scale * robust_standard_errors.params
-            # Scale standard errors
-            self.std_errors = scale * robust_standard_errors.bse
-            # t-statistic
-            self.t_stats = self.betas / self.std_errors
+        # Error Statistics
+        # Get robust standard errors Newey West (1987) with 6 lags
+        robust_standard_errors = ols.get_robustcov_results(cov_type='HAC', maxlags=6)
+        # betas
+        self.betas = robust_standard_errors.params
+        # standard errors
+        self.std_errors = robust_standard_errors.bse
+        # t-statistics
+        self.t_stats = self.betas / self.std_errors
 
     def evaluate(self):
         """
