@@ -103,7 +103,7 @@ wlsev_var_rets = es_50_logret.join(result).dropna()
 # ------------------------------------------------------------------------------------------------------------
 
 # set forecast_horizon
-forecast_horizon = 5
+forecast_horizon = 1
 
 # WLS-EV
 wlsev_obj = Wlsev_model(wlsev_var_rets['logreturns'][:-1].as_matrix(), wlsev_var_rets['logreturns'][1:].as_matrix(), wlsev_var_rets['vol_daily_est'][:-1].as_matrix(), forecast_horizon)

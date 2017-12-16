@@ -119,12 +119,6 @@ class Wlsev_model(object):
         """
         evaluate predictions based on estimated wls-ev mode
         """
-
-        # Predict with wls-ev
-        log_return_predict_wlsev = self.wls_ev_predict()
-        # Predict with benchmark approach mean
-        log_return_predict_benchmark = self.benchmark_predict()
-
         # define start index test set
         start_test_set = int(len(self.X) * 2 / 3)
 
@@ -137,11 +131,11 @@ class Wlsev_model(object):
 
             # Out of sample
             # Calculate MSE of wls-ev prediction, start at (test set index)+1, as prediction one period ahead
-            self.mse_wlsev = np.mean((self.X[start_test_set + 1:] - log_return_predict_wlsev) ** 2)
+            self.mse_wlsev = np.mean((self.X[start_test_set + 1:] - self.wls_ev_predict()) ** 2)
             # Calculate MSE of benchmark prediction, start at (test set index)+1, as prediction one period ahead
-            self.mse_benchmark = np.mean((self.X[start_test_set + 1:] - log_return_predict_benchmark) ** 2)
+            self.mse_benchmark = np.mean((self.X[start_test_set + 1:] - self.benchmark_predict()) ** 2)
         else:
-            # In Sample
+            # In Sample with betas estimated on full time series
             lin_residuals_in_sample = rolling_sum(self.y, self.forecast_horizon) - (
                     self.betas[0] + np.dot(self.X[:-(self.forecast_horizon - 1)], self.betas[1]))
             self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
@@ -151,10 +145,10 @@ class Wlsev_model(object):
             # calculate realized cummulative returns over forecast horizon sequences, start at (test set index)+1, as prediction one period ahead
             cum_rets_realized = rolling_sum(self.X[start_test_set + 1:], self.forecast_horizon)
             # Calculate MSE of wls-ev prediction, only where realized values are available
-            self.mse_wlsev = np.mean((cum_rets_realized - log_return_predict_wlsev[:-self.forecast_horizon + 1]) ** 2)
+            self.mse_wlsev = np.mean((cum_rets_realized - self.wls_ev_predict()[:-self.forecast_horizon + 1]) ** 2)
             # Calculate MSE of benchmark prediction, only where realized values are available
             self.mse_benchmark = np.mean(
-                (cum_rets_realized - log_return_predict_benchmark[:-self.forecast_horizon + 1]) ** 2)
+                (cum_rets_realized - self.benchmark_predict()[:-self.forecast_horizon + 1]) ** 2)
 
         # Calculate out of sample r-squared
         self.oos_r_squared = 1 - (self.mse_wlsev / self.mse_benchmark)
