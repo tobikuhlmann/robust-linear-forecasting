@@ -93,9 +93,9 @@ class Wlsev_model(object):
 
             # Calculate variances for scaling
             # Calculate Var(x_t_rolling): Variance of rolling sum
-            Var_x_t_rolling = X.var()
+            Var_x_t_rolling = np.var(X)
             # Calculate Var(x_t): Variance of log return series x_t
-            Var_x_t = self.X.var()
+            Var_x_t = np.var(self.X)
 
             # Continue X: add OLS constant
             X = sm.add_constant(X)
@@ -113,10 +113,9 @@ class Wlsev_model(object):
             # Error Statistics
             # Get robust standard errors Newey West (1987) with 6 lags
             robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
-
             # 2. Scale the resulting coefficients and standard errors
             # Scale parameter Var_x_t_rolling/Var_x_t
-            scale = Var_x_t_rolling / Var_x_t
+            scale = (Var_x_t_rolling / Var_x_t)
             # Scale betas
             self.betas = scale * robust_standard_errors.params
             # Scale standard errors
@@ -183,7 +182,7 @@ class Wlsev_model(object):
             wlsev_obj_help.fit()
             betas, std_errors, t_stats = wlsev_obj_help.get_results()
 
-            # # Predict r_t with r_t-1
+            # Predict r_t with r_t-1
             log_return_predict_wlsev[i - start_index_test] = betas[0] + betas[1] * self.X[i-1]
         self.log_return_predict_wlsev = log_return_predict_wlsev
         return log_return_predict_wlsev
@@ -245,4 +244,11 @@ class Wlsev_model(object):
 
         matplotlib.style.use('ggplot')
 
-        plt.plot(self.log_return_predict_benchmark,range(0, len(self.log_return_predict_benchmark)))
+        plt.plot(range(0, len(self.log_return_predict_benchmark)),self.log_return_predict_benchmark,
+                 label='mean benchmark')
+        plt.plot(range(0, len(self.log_return_predict_wlsev)), self.log_return_predict_wlsev,
+                 label='wlsev')
+        plt.plot(range(0, len(rolling_sum(self.y[664:], self.forecast_horizon))),rolling_sum(self.y[664:], self.forecast_horizon),
+                 label='realized')
+        plt.legend()
+        plt.show()

@@ -41,6 +41,9 @@ class OLS_model(object):
         self.var_in_sample = None
         self.in_sample_r_squared = None
 
+        self.log_return_predict_wlsev = None
+        self.log_return_predict_benchmark = None
+
         #print('WLS-EV Regression Object initialized!')
 
     def fit(self, summary = False):
@@ -132,7 +135,7 @@ class OLS_model(object):
 
             # # Predict r_t with r_t-1
             log_return_predict_wlsev[i - start_index_test] = betas[0] + betas[1] * self.X[i-1]
-
+        self.log_return_predict_wlsev = log_return_predict_wlsev
         return log_return_predict_wlsev
 
     def benchmark_predict(self):
@@ -156,7 +159,7 @@ class OLS_model(object):
                 # Calculate mean of rolling sum (=cummulative log returns)
                 log_return_predict_benchmark[i - start_index_test] = np.mean(
                     rolling_sum(self.y[:i-1], self.forecast_horizon))
-
+        self.log_return_predict_benchmark = log_return_predict_benchmark
         return log_return_predict_benchmark
 
     def print_results(self):
@@ -179,3 +182,25 @@ class OLS_model(object):
         get ols results
         """
         return self.betas, self.std_errors, self.t_stats
+
+    def plot_results(self):
+        """
+        plot results
+
+        """
+        import matplotlib
+
+        matplotlib.use
+        import matplotlib.pyplot as plt
+
+        matplotlib.style.use('ggplot')
+
+        plt.plot(range(0, len(self.log_return_predict_benchmark)), self.log_return_predict_benchmark,
+                 label='mean benchmark')
+        plt.plot(range(0, len(self.log_return_predict_wlsev)), self.log_return_predict_wlsev,
+                 label='ols')
+        plt.plot(range(0, len(rolling_sum(self.y[664:], self.forecast_horizon))),
+                 rolling_sum(self.y[664:], self.forecast_horizon),
+                 label='realized')
+        plt.legend()
+        plt.show()

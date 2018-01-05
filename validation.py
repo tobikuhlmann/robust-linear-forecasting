@@ -40,3 +40,5 @@ ols_obj = OLS_model(retvol['r'][:-1].as_matrix(), retvol['r'][1:].as_matrix(), f
 # fit model
 ols_obj.fit()
 ols_obj.evaluate()
+ols_obj.print_results()
+ols_obj.plot_results()
