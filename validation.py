@@ -33,10 +33,10 @@ wlsev_obj = Wlsev_model(retvol['r'][:-1].as_matrix(), retvol['r'][1:].as_matrix(
 wlsev_obj.fit()
 wlsev_obj.evaluate()
 wlsev_obj.print_results()
+wlsev_obj.plot_results()
 
 # Instantiate object
 ols_obj = OLS_model(retvol['r'][:-1].as_matrix(), retvol['r'][1:].as_matrix(), forecast_horizon)
 # fit model
 ols_obj.fit()
 ols_obj.evaluate()
-ols_obj.print_results()
