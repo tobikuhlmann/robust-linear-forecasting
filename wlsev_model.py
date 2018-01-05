@@ -80,22 +80,26 @@ class Wlsev_model(object):
             # overlapping returns
             # Regress Y = r_(t+1)/sigma2 on X=HodrickSum
 
-            # Get volatility from var through square root and delete last row of series to adjust dimensionality
+            # Get volatility from var through square root
             est_var_dim_adj = self.est_var[self.forecast_horizon - 1:] ** 0.5
             # X = HodrickSum(X)
             X = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
+
             # Calculate variances for scaling
             # Calculate Var(x_t_rolling): Variance of rolling sum
             Var_x_t_rolling = X.var()
             # Calculate Var(x_t): Variance of log return series x_t
             Var_x_t = self.X.var()
-            # Continue X sum
-            X = X / est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1))
-            # add OLS constant
+
+            # Continue X: add OLS constant
             X = sm.add_constant(X)
+            # divide by vol
+            X = X / est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1))
+
             # Y = r_(t+1)/sigma2_t
-            y = self.y[self.forecast_horizon-1:] / est_var_dim_adj
+            y = self.y[self.forecast_horizon-1:] #/ est_var_dim_adj
             y = np.transpose(y)
+
             # Next, run ols regression to estimate the wlsev parameters
             wlsev_reg_model = sm.OLS(y, X)
             wlsev = wlsev_reg_model.fit()  # Fit the model
@@ -103,10 +107,9 @@ class Wlsev_model(object):
             # Error Statistics
             # Get robust standard errors Newey West (1987) with 6 lags
             robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
-            # robust_standard_errors.summary()
 
             # 2. Scale the resulting coefficients and standard errors
-            # Scale Var_x_t_rolling/Var_x_t
+            # Scale parameter Var_x_t_rolling/Var_x_t
             scale = Var_x_t_rolling / Var_x_t
             # Scale betas
             self.betas = scale * robust_standard_errors.params
@@ -127,28 +130,28 @@ class Wlsev_model(object):
             # In sample
             lin_residuals_in_sample = self.y - (self.betas[0] + np.dot(self.X, self.betas[1]))
             self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
-            self.var_in_sample = np.var(self.y[:start_test_set - 1])
+            self.var_in_sample = np.var(self.y)
 
             # Out of sample
-            # Calculate MSE of wls-ev prediction, start at (test set index)+1, as prediction one period ahead
-            self.mse_wlsev = np.mean((self.X[start_test_set + 1:] - self.wls_ev_predict()) ** 2)
-            # Calculate MSE of benchmark prediction, start at (test set index)+1, as prediction one period ahead
-            self.mse_benchmark = np.mean((self.X[start_test_set + 1:] - self.benchmark_predict()) ** 2)
+            # Calculate MSE of wls-ev prediction
+            self.mse_wlsev = np.mean((self.y[start_test_set:] - self.wls_ev_predict()) ** 2)
+            # Calculate MSE of benchmark prediction
+            self.mse_benchmark = np.mean((self.y[start_test_set:] - self.benchmark_predict()) ** 2)
         else:
             # In Sample with betas estimated on full time series
             lin_residuals_in_sample = rolling_sum(self.y, self.forecast_horizon) - (
-                    self.betas[0] + np.dot(self.X[:-(self.forecast_horizon - 1)], self.betas[1]))
+                    self.betas[0] + np.dot(self.X[:-(self.forecast_horizon-1)], self.betas[1]))
             self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
-            self.var_in_sample = np.var(rolling_sum(self.y[:start_test_set - 1], self.forecast_horizon))
+            self.var_in_sample = np.var(rolling_sum(self.y, self.forecast_horizon))
 
             # Out of sample
-            # calculate realized cummulative returns over forecast horizon sequences, start at (test set index)+1, as prediction one period ahead
-            cum_rets_realized = rolling_sum(self.X[start_test_set + 1:], self.forecast_horizon)
+            # calculate realized cummulative returns over forecast horizon sequences
+            cum_rets_realized = rolling_sum(self.y[start_test_set:], self.forecast_horizon)
             # Calculate MSE of wls-ev prediction, only where realized values are available
-            self.mse_wlsev = np.mean((cum_rets_realized - self.wls_ev_predict()[:-self.forecast_horizon + 1]) ** 2)
+            self.mse_wlsev = np.mean((cum_rets_realized - self.wls_ev_predict()[:-(self.forecast_horizon-1)]) ** 2)
             # Calculate MSE of benchmark prediction, only where realized values are available
             self.mse_benchmark = np.mean(
-                (cum_rets_realized - self.benchmark_predict()[:-self.forecast_horizon + 1]) ** 2)
+                (cum_rets_realized - self.benchmark_predict()[:-(self.forecast_horizon-1)]) ** 2)
 
         # Calculate out of sample r-squared
         self.oos_r_squared = 1 - (self.mse_wlsev / self.mse_benchmark)
@@ -163,24 +166,19 @@ class Wlsev_model(object):
         # Get time series index for split train/test set
         start_index_test = int(len(self.y) * 2 / 3)
 
-        # Initialize result array with the length of test set -1 = length set - length training set
-        log_return_predict_wlsev = np.empty(int(len(self.y)) - start_index_test - 1)
+        # Initialize result array with the length of test set = length set - length training set
+        log_return_predict_wlsev = np.empty(int(len(self.y)) - start_index_test)
 
         # Loop through time series and calculate predictions with information available at t = i
-        # Loop only to lengnth(set) -1, because we need realized values for our prediction for eval
-        for i in range(start_index_test, len(self.y) - 1):
+        # python range is equivalent to [start_index_test, len(self.y))
+        for i in range(start_index_test, int(len(self.y))):
             # Initiate and Estimate model with information available at t = i
-            wlsev_obj = Wlsev_model(self.X[:i], self.y[:i], self.est_var[:i], self.forecast_horizon)
-            wlsev_obj.fit()
-            betas, std_errors, t_stats = wlsev_obj.get_results()
+            wlsev_obj_help = Wlsev_model(self.X[:i-1], self.y[:i-1], self.est_var[:i-1], self.forecast_horizon)
+            wlsev_obj_help.fit()
+            betas, std_errors, t_stats = wlsev_obj_help.get_results()
 
-            # Predict r_(t+1)
-            if self.forecast_horizon == 1:
-                # no constant for day ahead prediction
-                log_return_predict_wlsev[i - start_index_test] = betas[0] + betas[1] * self.X[i]
-            else:
-                # with constant beta0, beta1 * last available value
-                log_return_predict_wlsev[i - start_index_test] = betas[0] + betas[1] * self.X[i]
+            # # Predict r_t with r_t-1
+            log_return_predict_wlsev[i - start_index_test] = betas[0] + betas[1] * self.X[i-1]
 
         return log_return_predict_wlsev
 
@@ -192,18 +190,19 @@ class Wlsev_model(object):
         # Get time series index for split train/test set
         start_index_test = int(len(self.y) * 2 / 3)
 
-        # Initialize result array with the length of test set -1 = length set - length training set - 1
-        log_return_predict_benchmark = np.empty(int(len(self.y)) - start_index_test - 1)
+        # Initialize result array with the length of test set = length set - length training set
+        log_return_predict_benchmark = np.empty(int(len(self.y)) - start_index_test)
 
         # Loop through time series
-        for i in range(start_index_test, len(self.y) - 1):
-            # Predict r_(t+1)
+        # python range is equivalent to [start_index_test, len(self.y))
+        for i in range(start_index_test, int(len(self.y))):
+            # Predict r_t with r_t-1
             if self.forecast_horizon == 1:
-                log_return_predict_benchmark[i - start_index_test] = np.mean(self.y[:i])
+                log_return_predict_benchmark[i - start_index_test] = np.mean(self.y[:i-1])
             else:
                 # Calculate mean of rolling sum (=cummulative log returns)
                 log_return_predict_benchmark[i - start_index_test] = np.mean(
-                    rolling_sum(self.y[:i], self.forecast_horizon))
+                    rolling_sum(self.y[:i-1], self.forecast_horizon))
 
         return log_return_predict_benchmark
 

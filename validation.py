@@ -13,7 +13,7 @@ import matplotlib
 
 # Import price data and calc log returns
 # --------------------------------------------------
-retvol = pd.read_csv('data/simulated.csv')
+retvol = pd.read_csv('data/simulated.csv', sep=";")
 retvol
 
 # Calculate variance from vol
@@ -26,7 +26,7 @@ retvol['volatility'] = retvol['volatility'] ** 2
 # ------------------------------------------------------------------------------------------------------------
 # Join returns and estimated variance
 # set forecast_horizon
-forecast_horizon = 1
+forecast_horizon = 5
 # Instantiate object
 wlsev_obj = Wlsev_model(retvol['r'][:-1].as_matrix(), retvol['r'][1:].as_matrix(), retvol['volatility'][:-1].as_matrix(), forecast_horizon)
 # fit model

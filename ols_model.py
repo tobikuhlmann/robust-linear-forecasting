@@ -78,33 +78,33 @@ class OLS_model(object):
         # define start index test set
         start_test_set = int(len(self.X) * 2 / 3)
 
-        # Different methods for cummulative vs day-ahead forecasting
+        # Different methods for cummulativa vs day-ahead forecasting
         if self.forecast_horizon == 1:
             # In sample
             lin_residuals_in_sample = self.y - (self.betas[0] + np.dot(self.X, self.betas[1]))
             self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
-            self.var_in_sample = np.var(self.y[:start_test_set - 1])
+            self.var_in_sample = np.var(self.y)
 
             # Out of sample
-            # Calculate MSE of wls-ev prediction, start at (test set index)+1, as prediction one period ahead
-            self.mse_wlsev = np.mean((self.X[start_test_set + 1:] - self.ols_predict()) ** 2)
-            # Calculate MSE of benchmark prediction, start at (test set index)+1, as prediction one period ahead
-            self.mse_benchmark = np.mean((self.X[start_test_set + 1:] - self.benchmark_predict()) ** 2)
+            # Calculate MSE of wls-ev prediction
+            self.mse_wlsev = np.mean((self.y[start_test_set:] - self.ols_predict()) ** 2)
+            # Calculate MSE of benchmark prediction
+            self.mse_benchmark = np.mean((self.y[start_test_set:] - self.benchmark_predict()) ** 2)
         else:
             # In Sample with betas estimated on full time series
             lin_residuals_in_sample = rolling_sum(self.y, self.forecast_horizon) - (
-                    self.betas[0] + np.dot(self.X[:-(self.forecast_horizon - 1)], self.betas[1]))
+                    self.betas[0] + np.dot(self.X[:-(self.forecast_horizon-1)], self.betas[1]))
             self.rmse_in_sample = np.mean(lin_residuals_in_sample ** 2) ** 0.5
-            self.var_in_sample = np.var(rolling_sum(self.y[:start_test_set - 1], self.forecast_horizon))
+            self.var_in_sample = np.var(rolling_sum(self.y, self.forecast_horizon))
 
             # Out of sample
-            # calculate realized cummulative returns over forecast horizon sequences, start at (test set index)+1, as prediction one period ahead
-            cum_rets_realized = rolling_sum(self.X[start_test_set + 1:], self.forecast_horizon)
+            # calculate realized cummulative returns over forecast horizon sequences
+            cum_rets_realized = rolling_sum(self.y[start_test_set:], self.forecast_horizon)
             # Calculate MSE of wls-ev prediction, only where realized values are available
-            self.mse_wlsev = np.mean((cum_rets_realized - self.ols_predict()[:-self.forecast_horizon + 1]) ** 2)
+            self.mse_wlsev = np.mean((cum_rets_realized - self.ols_predict()[:-(self.forecast_horizon-1)]) ** 2)
             # Calculate MSE of benchmark prediction, only where realized values are available
             self.mse_benchmark = np.mean(
-                (cum_rets_realized - self.benchmark_predict()[:-self.forecast_horizon + 1]) ** 2)
+                (cum_rets_realized - self.benchmark_predict()[:-(self.forecast_horizon-1)]) ** 2)
 
         # Calculate out of sample r-squared
         self.oos_r_squared = 1 - (self.mse_wlsev / self.mse_benchmark)
@@ -113,27 +113,27 @@ class OLS_model(object):
 
     def ols_predict(self):
         """
-        Predict values based on estimated ols model
+        Predict values based on estimated wls-ev model
         """
 
         # Get time series index for split train/test set
         start_index_test = int(len(self.y) * 2 / 3)
 
-        # Initialize result array with the length of test set -1 = length set - length training set
-        log_return_predict_ols = np.empty(int(len(self.y)) - start_index_test - 1)
+        # Initialize result array with the length of test set = length set - length training set
+        log_return_predict_wlsev = np.empty(int(len(self.y)) - start_index_test)
 
         # Loop through time series and calculate predictions with information available at t = i
-        # Loop only to length(set) -1, because we need realized values for our prediction for eval
-        for i in range(start_index_test, len(self.y) - 1):
+        # python range is equivalent to [start_index_test, len(self.y))
+        for i in range(start_index_test, int(len(self.y))):
             # Initiate and Estimate model with information available at t = i
-            ols_obj = OLS_model(self.X[:i], self.y[:i], self.forecast_horizon)
-            ols_obj.fit()
-            betas, std_errors, t_stats = ols_obj.get_results()
+            wlsev_obj_help = OLS_model(self.X[:i-1], self.y[:i-1], self.forecast_horizon)
+            wlsev_obj_help.fit()
+            betas, std_errors, t_stats = wlsev_obj_help.get_results()
 
-            # Predict r_(t+1) with constant beta0, beta1 * last available value
-            log_return_predict_ols[i - start_index_test] = betas[0] + betas[1] * self.X[i]
+            # # Predict r_t with r_t-1
+            log_return_predict_wlsev[i - start_index_test] = betas[0] + betas[1] * self.X[i-1]
 
-        return log_return_predict_ols
+        return log_return_predict_wlsev
 
     def benchmark_predict(self):
         """
@@ -143,18 +143,19 @@ class OLS_model(object):
         # Get time series index for split train/test set
         start_index_test = int(len(self.y) * 2 / 3)
 
-        # Initialize result array with the length of test set -1 = length set - length training set - 1
-        log_return_predict_benchmark = np.empty(int(len(self.y)) - start_index_test - 1)
+        # Initialize result array with the length of test set = length set - length training set
+        log_return_predict_benchmark = np.empty(int(len(self.y)) - start_index_test)
 
         # Loop through time series
-        for i in range(start_index_test, len(self.y) - 1):
-            # Predict r_(t+1)
+        # python range is equivalent to [start_index_test, len(self.y))
+        for i in range(start_index_test, int(len(self.y))):
+            # Predict r_t with r_t-1
             if self.forecast_horizon == 1:
-                log_return_predict_benchmark[i - start_index_test] = np.mean(self.y[:i])
+                log_return_predict_benchmark[i - start_index_test] = np.mean(self.y[:i-1])
             else:
                 # Calculate mean of rolling sum (=cummulative log returns)
                 log_return_predict_benchmark[i - start_index_test] = np.mean(
-                    rolling_sum(self.y[:i], self.forecast_horizon))
+                    rolling_sum(self.y[:i-1], self.forecast_horizon))
 
         return log_return_predict_benchmark
 
