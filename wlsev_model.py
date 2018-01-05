@@ -97,7 +97,7 @@ class Wlsev_model(object):
             X = X / est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1))
 
             # Y = r_(t+1)/sigma2_t
-            y = self.y[self.forecast_horizon-1:] #/ est_var_dim_adj
+            y = self.y[self.forecast_horizon-1:] / est_var_dim_adj
             y = np.transpose(y)
 
             # Next, run ols regression to estimate the wlsev parameters
