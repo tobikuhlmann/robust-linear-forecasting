@@ -18,11 +18,12 @@ def rolling_sum(a, n):
 
 def hodrick_sum(data, forecast_horizon):
     """
-        calculate hodrick sum
+    calculate hodrick sum
+    if forecast_horizon = 1 then the hodrick sum is the initial series
 
-         :param X: independent regression variable
-         :param forecast_horizon: forecast horizon
-        """
+    :param X: independent regression variable
+    :param forecast_horizon: forecast horizon
+    """
     # X = HodrickSum(X)/sigma2_t
     # Initialize X(t)
     result = data[forecast_horizon - 1:]
@@ -31,8 +32,16 @@ def hodrick_sum(data, forecast_horizon):
         result = np.vstack((result, data[(forecast_horizon - (1 + i)):-i]))
     # Transpose X to get correct OLS dimensions
     result = np.transpose(result)
-    result = np.sum(result, axis=1).reshape((result.shape[0], 1))
+    if forecast_horizon > 1:
+        result = np.sum(result, axis=1).reshape((result.shape[0], 1))
     return result
+
+if __name__ == "__main__":
+    x = [1,2,3,4,5,6,7]
+    print(rolling_sum(x,1))
+    print(hodrick_sum(x,1))
+
+
 
 
 

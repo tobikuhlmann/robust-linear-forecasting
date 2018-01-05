@@ -54,74 +54,44 @@ class Wlsev_model(object):
         """
         Estimate wls-ev with correct function, depending on forecast horizon if returns are overlapping
         """
-        if self.forecast_horizon == 1:
-            # non-overlapping returns
-            # Regress Y = r_(t+1)/sigma2 on X=X_t/sigma2
+        # overlapping returns: Regress Y = r_(t+1)/sigma2 on X=HodrickSum
 
-            # Get volatility from var through square root and delete last row of series to adjust dimensionality
-            est_var_dim_adj = self.est_var ** 0.5
-            # X = X_t/sigma2_t, delete last row to adjust for dimensionality
-            X = self.X
-            # add OLS constant
-            X = sm.add_constant(X)
-            # divide by variance
-            X = X / est_var_dim_adj[:, None]
-            # Y = r_(t+1)/sigma2_t
-            y = self.y / est_var_dim_adj
-            # Next, run ols regression to estimate the wlsev parameters
-            wlsev_reg_model = sm.OLS(y, X)
-            wlsev = wlsev_reg_model.fit()  # Fit the model
+        # Get volatility from var through square root
+        est_var_dim_adj = self.est_var[self.forecast_horizon - 1:] ** 0.5
+        # X = HodrickSum(X)
+        X = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
 
-            # Error Statistics
-            # Get robust standard errors Newey West (1987) with 6 lags
-            robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
-            # betas
-            self.betas = robust_standard_errors.params
-            # standard errors
-            self.std_errors = robust_standard_errors.bse
-            # t-statistics
-            self.t_stats = self.betas / self.std_errors
+        # Calculate variances for scaling
+        # Calculate Var(x_t_rolling): Variance of rolling sum
+        Var_x_t_rolling = np.var(X)
+        # Calculate Var(x_t): Variance of log return series x_t
+        Var_x_t = np.var(self.X)
 
-        else:
-            # overlapping returns
-            # Regress Y = r_(t+1)/sigma2 on X=HodrickSum
+        # Continue X: add OLS constant
+        X = sm.add_constant(X)
+        # divide by vol
+        X = X / est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1))
 
-            # Get volatility from var through square root
-            est_var_dim_adj = self.est_var[self.forecast_horizon - 1:] ** 0.5
-            # X = HodrickSum(X)
-            X = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
+        # Y = r_(t+1)/sigma2_t
+        y = self.y[self.forecast_horizon-1:] / est_var_dim_adj
+        y = np.transpose(y)
 
-            # Calculate variances for scaling
-            # Calculate Var(x_t_rolling): Variance of rolling sum
-            Var_x_t_rolling = np.var(X)
-            # Calculate Var(x_t): Variance of log return series x_t
-            Var_x_t = np.var(self.X)
+        # Next, run ols regression to estimate the wlsev parameters
+        wlsev_reg_model = sm.OLS(y, X)
+        wlsev = wlsev_reg_model.fit()  # Fit the model
 
-            # Continue X: add OLS constant
-            X = sm.add_constant(X)
-            # divide by vol
-            X = X / est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1))
-
-            # Y = r_(t+1)/sigma2_t
-            y = self.y[self.forecast_horizon-1:] / est_var_dim_adj
-            y = np.transpose(y)
-
-            # Next, run ols regression to estimate the wlsev parameters
-            wlsev_reg_model = sm.OLS(y, X)
-            wlsev = wlsev_reg_model.fit()  # Fit the model
-
-            # Error Statistics
-            # Get robust standard errors Newey West (1987) with 6 lags
-            robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
-            # 2. Scale the resulting coefficients and standard errors
-            # Scale parameter Var_x_t_rolling/Var_x_t
-            scale = (Var_x_t_rolling / Var_x_t)
-            # Scale betas
-            self.betas = scale * robust_standard_errors.params
-            # Scale standard errors
-            self.std_errors = scale * robust_standard_errors.bse
-            # t-statistic
-            self.t_stats = self.betas / self.std_errors
+        # Error Statistics
+        # Get robust standard errors Newey West (1987) with 6 lags
+        robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
+        # 2. Scale the resulting coefficients and standard errors
+        # Scale parameter Var_x_t_rolling/Var_x_t, scale = 1 if forecast horizon = 1
+        scale = (Var_x_t_rolling / Var_x_t)
+        # Scale betas
+        self.betas = scale * robust_standard_errors.params
+        # Scale standard errors
+        self.std_errors = scale * robust_standard_errors.bse
+        # t-statistic
+        self.t_stats = self.betas / self.std_errors
 
     def evaluate(self):
         """
@@ -130,7 +100,7 @@ class Wlsev_model(object):
         # define start index test set
         start_test_set = int(len(self.X) * 2 / 3)
 
-        # Different methods for cummulativa vs day-ahead forecasting
+        # Different methods for cummulative vs day-ahead forecasting
         if self.forecast_horizon == 1:
             # In sample
             lin_residuals_in_sample = self.y - (self.betas[0] + np.dot(self.X, self.betas[1]))
@@ -202,9 +172,9 @@ class Wlsev_model(object):
         # python range is equivalent to [start_index_test, len(self.y))
         for i in range(start_index_test, int(len(self.y))):
             # Predict r_t with r_t-1
-            if self.forecast_horizon == 1:
-                log_return_predict_benchmark[i - start_index_test] = np.mean(self.y[:i-1])
-            else:
+            #if self.forecast_horizon == 1:
+            #    log_return_predict_benchmark[i - start_index_test] = np.mean(self.y[:i-1])
+            #else:
                 # Calculate mean of rolling sum (=cummulative log returns)
                 log_return_predict_benchmark[i - start_index_test] = np.mean(
                     rolling_sum(self.y[:i-1], self.forecast_horizon))
