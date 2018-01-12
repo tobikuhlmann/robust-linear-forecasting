@@ -20,8 +20,8 @@ retvol['volatility'] = retvol['volatility'] ** 2
 
 '''Small sample '''
 # Join returns and estimated variance
-#data = np.array([1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2,1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2])
-#vol = np.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1])
+data = np.array([1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2,1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2])
+vol = np.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1])
 
 '''Tobis simulated data'''
 #retvol = np.random.lognormal(0.02,0.01,10000)
@@ -35,11 +35,8 @@ retvol['volatility'] = retvol['volatility'] ** 2
 # 2. least squares estimates weighted by ex-ante return variance (WLS-EV) using Johnson (2016)
 # ------------------------------------------------------------------------------------------------------------
 
-
-
-
 # set forecast_horizon
-forecast_horizon = 1
+forecast_horizon = 5
 # Instantiate object
 #wlsev_obj = Wlsev_model(retvol[:-1], retvol[1:], retvol[1:], forecast_horizon)
 wlsev_obj = Wlsev_model(retvol['r'][:-1].as_matrix(), retvol['r'][1:].as_matrix(), retvol['volatility'][1:].as_matrix(), forecast_horizon)
@@ -50,6 +47,7 @@ wlsev_obj.fit()
 wlsev_obj.evaluate()
 wlsev_obj.print_results()
 wlsev_obj.plot_results()
+wlsev_obj.plot_scatter()
 
 # Instantiate object
 #ols_obj = OLS_model(retvol[:-1], retvol[1:], forecast_horizon)
@@ -61,3 +59,4 @@ ols_obj.fit()
 ols_obj.evaluate()
 ols_obj.print_results()
 ols_obj.plot_results()
+ols_obj.plot_scatter()

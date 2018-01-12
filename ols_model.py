@@ -201,3 +201,28 @@ class OLS_model(object):
                  label='realized')
         plt.legend()
         plt.show()
+
+    def plot_scatter(self):
+        """
+        plot scatter
+
+        """
+        import matplotlib
+
+        matplotlib.use
+        import matplotlib.pyplot as plt
+
+        matplotlib.style.use('ggplot')
+
+        # plot initial X and Y
+        X = self.X[int(len(self.y) * 2 / 3):-(self.forecast_horizon - 1)]
+        Y = rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon)
+        plt.scatter(X, Y)
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        # plot wlsev prediction
+        plt.plot(X, self.betas[0] + self.betas[1] * X,
+                 label='ols')
+
+        plt.legend()
+        plt.show()

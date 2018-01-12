@@ -59,6 +59,7 @@ class Wlsev_model(object):
         # Get volatility from var through square root
         est_var_dim_adj = self.est_var[self.forecast_horizon - 1:] ** 0.5
         # X = HodrickSum(X)
+
         X_univariate = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
 
         # Calculate variances for scaling
@@ -219,3 +220,29 @@ class Wlsev_model(object):
                  label='realized')
         plt.legend()
         plt.show()
+
+    def plot_scatter(self):
+        """
+        plot scatter
+
+        """
+        import matplotlib
+
+        matplotlib.use
+        import matplotlib.pyplot as plt
+
+        matplotlib.style.use('ggplot')
+
+        # plot initial X and Y
+        X = self.X[int(len(self.y) * 2 / 3):-(self.forecast_horizon-1)]
+        Y = rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon)
+        plt.scatter(X, Y)
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        # plot wlsev prediction
+        plt.plot(X, self.betas[0] + self.betas[1] * X,
+                 label='wlsev')
+
+        plt.legend()
+        plt.show()
+
