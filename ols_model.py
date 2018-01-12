@@ -125,10 +125,10 @@ class OLS_model(object):
         # Initialize result array with the length of test set = length set - length training set
         log_return_predict_wlsev = np.empty(int(len(self.y)) - start_index_test)
 
-        # Loop through time series and calculate predictions with information available at t = i
+        # Loop through time series and calculate predictions for t = i with information available at t = i - 1
         # python range is equivalent to [start_index_test, len(self.y))
         for i in range(start_index_test, int(len(self.y))):
-            # Initiate and Estimate model with information available at t = i
+            # Initiate and Estimate model for t = 1 with information available at t = i - 1
             wlsev_obj_help = OLS_model(self.X[:i-1], self.y[:i-1], self.forecast_horizon)
             wlsev_obj_help.fit()
             betas, std_errors, t_stats = wlsev_obj_help.get_results()
@@ -153,12 +153,9 @@ class OLS_model(object):
         # python range is equivalent to [start_index_test, len(self.y))
         for i in range(start_index_test, int(len(self.y))):
             # Predict r_t with r_t-1
-            if self.forecast_horizon == 1:
-                log_return_predict_benchmark[i - start_index_test] = np.mean(self.y[:i-1])
-            else:
-                # Calculate mean of rolling sum (=cummulative log returns)
-                log_return_predict_benchmark[i - start_index_test] = np.mean(
-                    rolling_sum(self.y[:i-1], self.forecast_horizon))
+            # Calculate mean of rolling sum (=cummulative log returns)
+            log_return_predict_benchmark[i - start_index_test] = np.mean(
+                rolling_sum(self.y[:i-1], self.forecast_horizon))
         self.log_return_predict_benchmark = log_return_predict_benchmark
         return log_return_predict_benchmark
 

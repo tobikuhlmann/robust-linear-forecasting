@@ -41,6 +41,9 @@ if __name__ == "__main__":
     print(rolling_sum(x,1))
     print(hodrick_sum(x,1))
 
+    print(rolling_sum(x, 2))
+    print(hodrick_sum(x, 2))
+
 
 
 

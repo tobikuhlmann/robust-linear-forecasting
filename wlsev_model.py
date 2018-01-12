@@ -54,25 +54,29 @@ class Wlsev_model(object):
         """
         Estimate wls-ev with correct function, depending on forecast horizon if returns are overlapping
         """
-        # overlapping returns: Regress Y = r_(t+1)/sigma2 on X=HodrickSum
+        # overlapping returns: Regress Y = r_(t+1) / sigma on X=HodrickSum / sigma
 
         # Get volatility from var through square root
         est_var_dim_adj = self.est_var[self.forecast_horizon - 1:] ** 0.5
         # X = HodrickSum(X)
-        X = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
+        # TODO: also hodrick sum of constants?
+        constant = np.ones(self.X.shape)
+        X_constant = hodrick_sum(constant, forecast_horizon=self.forecast_horizon)
+        X_univariate = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
+        #X = np.column_stack((X_constant, X_univariate))
 
         # Calculate variances for scaling
-        # Calculate Var(x_t_rolling): Variance of rolling sum
-        Var_x_t_rolling = np.var(X)
-        # Calculate Var(x_t): Variance of log return series x_t
+        # Calculate Var(x_t_rolling)
+        Var_x_t_rolling = np.var(X_univariate)
+        # Calculate Var(x_t):
         Var_x_t = np.var(self.X)
 
         # Continue X: add OLS constant
-        X = sm.add_constant(X)
-        # divide by vol
+        X = sm.add_constant(X_univariate)
+        # wlsev step: divide by vol
         X = X / est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1))
 
-        # Y = r_(t+1)/sigma2_t
+        # Y = r_(t+1)/sigma
         y = self.y[self.forecast_horizon-1:] / est_var_dim_adj
         y = np.transpose(y)
 
@@ -152,7 +156,7 @@ class Wlsev_model(object):
             wlsev_obj_help.fit()
             betas, std_errors, t_stats = wlsev_obj_help.get_results()
 
-            # Predict r_t with r_t-1
+            # Predict initial regression r_t with r_t-1
             log_return_predict_wlsev[i - start_index_test] = betas[0] + betas[1] * self.X[i-1]
         self.log_return_predict_wlsev = log_return_predict_wlsev
         return log_return_predict_wlsev
@@ -172,12 +176,9 @@ class Wlsev_model(object):
         # python range is equivalent to [start_index_test, len(self.y))
         for i in range(start_index_test, int(len(self.y))):
             # Predict r_t with r_t-1
-            #if self.forecast_horizon == 1:
-            #    log_return_predict_benchmark[i - start_index_test] = np.mean(self.y[:i-1])
-            #else:
-                # Calculate mean of rolling sum (=cummulative log returns)
-                log_return_predict_benchmark[i - start_index_test] = np.mean(
-                    rolling_sum(self.y[:i-1], self.forecast_horizon))
+            # Calculate mean of rolling sum (=cummulative log returns)
+            log_return_predict_benchmark[i - start_index_test] = np.mean(
+                rolling_sum(self.y[:i-1], self.forecast_horizon))
         self.log_return_predict_benchmark = log_return_predict_benchmark
         return log_return_predict_benchmark
 

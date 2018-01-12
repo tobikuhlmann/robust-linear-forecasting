@@ -25,8 +25,8 @@ retvol['volatility'] = retvol['volatility'] ** 2
 # 2. least squares estimates weighted by ex-ante return variance (WLS-EV) using Johnson (2016)
 # ------------------------------------------------------------------------------------------------------------
 # Join returns and estimated variance
-data = np.array([1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2])
-vol = np.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1])
+data = np.array([1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2,1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2])
+vol = np.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1])
 
 # set forecast_horizon
 forecast_horizon = 5
