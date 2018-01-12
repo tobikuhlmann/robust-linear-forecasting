@@ -59,11 +59,7 @@ class Wlsev_model(object):
         # Get volatility from var through square root
         est_var_dim_adj = self.est_var[self.forecast_horizon - 1:] ** 0.5
         # X = HodrickSum(X)
-        # TODO: also hodrick sum of constants?
-        constant = np.ones(self.X.shape)
-        X_constant = hodrick_sum(constant, forecast_horizon=self.forecast_horizon)
         X_univariate = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
-        #X = np.column_stack((X_constant, X_univariate))
 
         # Calculate variances for scaling
         # Calculate Var(x_t_rolling)

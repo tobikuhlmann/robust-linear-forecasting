@@ -13,26 +13,38 @@ import matplotlib
 
 # Import price data and calc log returns
 # --------------------------------------------------
+'''Simons simulated data'''
 retvol = pd.read_csv('data/simulated.csv', sep=";")
-retvol
-
 # Calculate variance from vol
 retvol['volatility'] = retvol['volatility'] ** 2
+
+'''Small sample '''
+# Join returns and estimated variance
+#data = np.array([1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2,1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2])
+#vol = np.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1])
+
+'''Tobis simulated data'''
+#retvol = np.random.lognormal(0.02,0.01,10000)
+#retvol.shape
+#vol = np.ones(10000) * 0.01
+
 
 # Model and Analysis
 # ==================================================
 
 # 2. least squares estimates weighted by ex-ante return variance (WLS-EV) using Johnson (2016)
 # ------------------------------------------------------------------------------------------------------------
-# Join returns and estimated variance
-data = np.array([1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2,1,0,-1,2,-1,0,1,0,2,-1,0,1,2,-1,0,-1,0,2])
-vol = np.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1])
+
+
+
 
 # set forecast_horizon
-forecast_horizon = 5
+forecast_horizon = 1
 # Instantiate object
+#wlsev_obj = Wlsev_model(retvol[:-1], retvol[1:], retvol[1:], forecast_horizon)
 wlsev_obj = Wlsev_model(retvol['r'][:-1].as_matrix(), retvol['r'][1:].as_matrix(), retvol['volatility'][1:].as_matrix(), forecast_horizon)
 #wlsev_obj = Wlsev_model(data[:-1], data[1:], vol[1:], forecast_horizon)
+
 # fit model
 wlsev_obj.fit()
 wlsev_obj.evaluate()
@@ -40,6 +52,7 @@ wlsev_obj.print_results()
 wlsev_obj.plot_results()
 
 # Instantiate object
+#ols_obj = OLS_model(retvol[:-1], retvol[1:], forecast_horizon)
 ols_obj = OLS_model(retvol['r'][:-1].as_matrix(), retvol['r'][1:].as_matrix(), forecast_horizon)
 #ols_obj = OLS_model(data[:-1], data[1:], forecast_horizon)
 
