@@ -218,7 +218,7 @@ class Wlsev_model(object):
                  label='mean benchmark')
         plt.plot(range(0, len(self.log_return_predict_wlsev)), self.log_return_predict_wlsev,
                  label='wlsev')
-        plt.plot(range(0, len(rolling_sum(self.y[664:], self.forecast_horizon))),rolling_sum(self.y[664:], self.forecast_horizon),
+        plt.plot(range(0, len(rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon))),rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon),
                  label='realized')
         plt.legend()
         plt.show()
