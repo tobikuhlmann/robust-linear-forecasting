@@ -199,6 +199,9 @@ class OLS_model(object):
         plt.plot(range(0, len(rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon))),
                  rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon),
                  label='realized')
+        plt.title('OLS Time Series')
+        plt.xlabel('time')
+        plt.ylabel('returns')
         plt.legend()
         plt.show()
 
@@ -215,9 +218,13 @@ class OLS_model(object):
         matplotlib.style.use('ggplot')
 
         # plot initial X and Y
-        X = self.X[int(len(self.y) * 2 / 3):-(self.forecast_horizon - 1)]
+        if self.forecast_horizon == 1:
+            X = self.X[int(len(self.y) * 2 / 3):]
+        else:
+            X = self.X[int(len(self.y) * 2 / 3):-(self.forecast_horizon-1)]
         Y = rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon)
         plt.scatter(X, Y)
+        plt.title('OLS Scatter')
         plt.xlabel('X')
         plt.ylabel('Y')
         # plot wlsev prediction

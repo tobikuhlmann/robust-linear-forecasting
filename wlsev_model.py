@@ -60,18 +60,25 @@ class Wlsev_model(object):
         est_var_dim_adj = self.est_var[self.forecast_horizon - 1:] ** 0.5
         # X = HodrickSum(X)
 
-        X_univariate = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
+        # Create X without sums: stack columns axis 1
+        X = np.column_stack((np.ones(self.X.shape), self.X))
 
-        # Calculate variances for scaling
-        # Calculate Var(x_t_rolling)
-        Var_x_t_rolling = np.var(X_univariate)
-        # Calculate Var(x_t):
-        Var_x_t = np.var(self.X)
+        # create constant vector
+        X_constant = np.ones(self.X.shape)
+        # hodrick sum of constant vector
+        X_constant_sum = hodrick_sum(X_constant, forecast_horizon=self.forecast_horizon)
+        # hodrick sum of predictors
+        predictor_sum = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
+        # Create X_bar: stack columns axis 1
+        X_hodrick_sum = np.column_stack((X_constant_sum, predictor_sum))
 
-        # Continue X: add OLS constant
-        X = sm.add_constant(X_univariate)
+        # get matrix of scales
+        scale_a = self.scale_matrix(X)
+        scale_b = self.scale_matrix(X_hodrick_sum)
+        scale = np.dot(np.linalg.inv(scale_a), scale_b)
+
         # wlsev step: divide by vol
-        X = X / est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1))
+        X = X_hodrick_sum / est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1))
 
         # Y = r_(t+1)/sigma
         y = self.y[self.forecast_horizon-1:] / est_var_dim_adj
@@ -86,13 +93,19 @@ class Wlsev_model(object):
         robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
         # 2. Scale the resulting coefficients and standard errors
         # Scale parameter Var_x_t_rolling/Var_x_t, scale = 1 if forecast horizon = 1
-        scale = (Var_x_t_rolling / Var_x_t)
         # Scale betas
-        self.betas = scale * robust_standard_errors.params
+        self.betas = np.dot(scale, robust_standard_errors.params)
         # Scale standard errors
-        self.std_errors = scale * robust_standard_errors.bse
+        self.std_errors = np.dot(scale, robust_standard_errors.bse)
         # t-statistic
         self.t_stats = self.betas / self.std_errors
+
+    def scale_matrix(self, x):
+        E_x = np.zeros((x.shape[1], x.shape[1]))
+        for t in range(0, x.shape[0]):
+            E_x += np.dot(x[t:t+1,:].T, x[t:t+1,:])
+        E_x /= x.shape[0]
+        return E_x
 
     def evaluate(self):
         """
@@ -212,12 +225,18 @@ class Wlsev_model(object):
 
         matplotlib.style.use('ggplot')
 
-        plt.plot(range(0, len(self.log_return_predict_benchmark)),self.log_return_predict_benchmark,
+        # benchmark prediction
+        plt.plot(range(0, len(self.log_return_predict_benchmark)), self.log_return_predict_benchmark,
                  label='mean benchmark')
+        # wlsev prediction
         plt.plot(range(0, len(self.log_return_predict_wlsev)), self.log_return_predict_wlsev,
                  label='wlsev')
+        # realized returns
         plt.plot(range(0, len(rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon))),rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon),
                  label='realized')
+        plt.title('WLS-EV Time Series')
+        plt.xlabel('time')
+        plt.ylabel('returns')
         plt.legend()
         plt.show()
 
@@ -234,9 +253,13 @@ class Wlsev_model(object):
         matplotlib.style.use('ggplot')
 
         # plot initial X and Y
-        X = self.X[int(len(self.y) * 2 / 3):-(self.forecast_horizon-1)]
+        if self.forecast_horizon == 1:
+            X = self.X[int(len(self.y) * 2 / 3):]
+        else:
+            X = self.X[int(len(self.y) * 2 / 3):-(self.forecast_horizon-1)]
         Y = rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon)
         plt.scatter(X, Y)
+        plt.title('WLS-EV Scatter')
         plt.xlabel('X')
         plt.ylabel('Y')
         # plot wlsev prediction
@@ -245,4 +268,3 @@ class Wlsev_model(object):
 
         plt.legend()
         plt.show()
-

@@ -37,12 +37,16 @@ def hodrick_sum(data, forecast_horizon):
     return result
 
 if __name__ == "__main__":
+    '''
+    Test functions if they correct sum up and return correct dimensions
+    '''
     x = [1,2,3,4,5,6,7]
     print(rolling_sum(x,1))
     print(hodrick_sum(x,1))
 
     print(rolling_sum(x, 2))
     print(hodrick_sum(x, 2))
+
 
 
 
