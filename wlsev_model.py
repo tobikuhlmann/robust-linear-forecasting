@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.style.use('ggplot')
 
-from helper_functions import rolling_sum, hodrick_sum
+from helper_functions import rolling_sum, hodrick_sum, scale_matrix
 
 
 class Wlsev_model(object):
@@ -63,6 +63,10 @@ class Wlsev_model(object):
         # Create X without sums: stack columns axis 1
         X = np.column_stack((np.ones(self.X.shape), self.X))
 
+        # get multivariate hodrick sum (sum up each column seperate)
+        X_hodrick_sum = hodrick_sum(data=X, forecast_horizon=self.forecast_horizon)
+
+        '''
         # create constant vector
         X_constant = np.ones(self.X.shape)
         # hodrick sum of constant vector
@@ -71,17 +75,17 @@ class Wlsev_model(object):
         predictor_sum = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
         # Create X_bar: stack columns axis 1
         X_hodrick_sum = np.column_stack((X_constant_sum, predictor_sum))
-
+        '''
         # get matrix of scales
-        scale_a = self.scale_matrix(X)
-        scale_b = self.scale_matrix(X_hodrick_sum)
+        scale_a = scale_matrix(X)
+        scale_b = scale_matrix(X_hodrick_sum)
         scale = np.dot(np.linalg.inv(scale_a), scale_b)
 
         # wlsev step: divide by vol
-        X = X_hodrick_sum / est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1))
+        X = np.divide(X_hodrick_sum, est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1)))
 
         # Y = r_(t+1)/sigma
-        y = self.y[self.forecast_horizon-1:] / est_var_dim_adj
+        y = np.divide(self.y[self.forecast_horizon-1:], est_var_dim_adj)
         y = np.transpose(y)
 
         # Next, run ols regression to estimate the wlsev parameters
@@ -99,13 +103,6 @@ class Wlsev_model(object):
         self.std_errors = np.dot(scale, robust_standard_errors.bse)
         # t-statistic
         self.t_stats = self.betas / self.std_errors
-
-    def scale_matrix(self, x):
-        E_x = np.zeros((x.shape[1], x.shape[1]))
-        for t in range(0, x.shape[0]):
-            E_x += np.dot(x[t:t+1,:].T, x[t:t+1,:])
-        E_x /= x.shape[0]
-        return E_x
 
     def evaluate(self):
         """
@@ -167,7 +164,7 @@ class Wlsev_model(object):
             betas, std_errors, t_stats = wlsev_obj_help.get_results()
 
             # Predict initial regression r_t with r_t-1
-            log_return_predict_wlsev[i - start_index_test] = betas[0] + betas[1] * self.X[i-1]
+            log_return_predict_wlsev[i - start_index_test] = betas[0] + np.dot(betas[1], self.X[i-1])
         self.log_return_predict_wlsev = log_return_predict_wlsev
         return log_return_predict_wlsev
 

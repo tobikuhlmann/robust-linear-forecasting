@@ -134,7 +134,7 @@ class OLS_model(object):
             betas, std_errors, t_stats = wlsev_obj_help.get_results()
 
             # # Predict r_t with r_t-1
-            log_return_predict_wlsev[i - start_index_test] = betas[0] + betas[1] * self.X[i-1]
+            log_return_predict_wlsev[i - start_index_test] = betas[0] + np.dot(betas[1], self.X[i-1])
         self.log_return_predict_wlsev = log_return_predict_wlsev
         return log_return_predict_wlsev
 
