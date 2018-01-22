@@ -66,16 +66,6 @@ class Wlsev_model(object):
         # get multivariate hodrick sum (sum up each column seperate)
         X_hodrick_sum = hodrick_sum(data=X, forecast_horizon=self.forecast_horizon)
 
-        '''
-        # create constant vector
-        X_constant = np.ones(self.X.shape)
-        # hodrick sum of constant vector
-        X_constant_sum = hodrick_sum(X_constant, forecast_horizon=self.forecast_horizon)
-        # hodrick sum of predictors
-        predictor_sum = hodrick_sum(self.X, forecast_horizon=self.forecast_horizon)
-        # Create X_bar: stack columns axis 1
-        X_hodrick_sum = np.column_stack((X_constant_sum, predictor_sum))
-        '''
         # get matrix of scales
         scale_a = scale_matrix(X)
         scale_b = scale_matrix(X_hodrick_sum)

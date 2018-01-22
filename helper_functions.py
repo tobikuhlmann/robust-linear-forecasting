@@ -91,26 +91,25 @@ if __name__ == "__main__":
     # test vector
     x = [1,2,3,4,5,6,7]
     # check rolling sum forecast horizon 1
-    #print(rolling_sum(x,1))
+    print(rolling_sum(x,1))
     # test matrix
     y = np.matrix([[1, 1, 1, 1, 1, 1, 1], [1, 2, 3, 4, 5, 6, 7]])
     # check hodrick sum forecast horizon 1
-    #print(hodrick_sum(x,1))
+    print(hodrick_sum(x,1))
     print(hodrick_sum(y.T, 1))
 
     # check rolling sum forecast horizon > 1
-    #print(rolling_sum(x, 2))
+    print(rolling_sum(x, 2))
     # check hodrick sum forecast horizon > 1
-    #print(hodrick_sum(x, 2))
     print("multivariate")
     print(hodrick_sum(y.T, 3))
 
-    '''
+
     # Check expected value calculation of X'X
-    y = np.matrix([[1,2], [1,2], [1,2], [1,2], [1,2]])
-    print(scale_matrix(y))
-    print(scale_matrix_old(y))
-    '''
+    #y = np.matrix([[1,2], [1,2], [1,2], [1,2], [1,2]])
+    print(scale_matrix(y.T))
+    print(scale_matrix_old(y.T))
+
 
 
 
