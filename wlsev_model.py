@@ -255,3 +255,12 @@ class Wlsev_model(object):
 
         plt.legend()
         plt.show()
+
+    def get_plot_data_wlsev(self):
+        if self.forecast_horizon == 1:
+            X = self.X[int(len(self.y) * 2 / 3):]
+        else:
+            X = self.X[int(len(self.y) * 2 / 3):-(self.forecast_horizon - 1)]
+        Y = rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon)
+        y_wlsev = self.betas[0] + self.betas[1] * X
+        return X, Y, y_wlsev

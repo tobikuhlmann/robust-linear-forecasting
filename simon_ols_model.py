@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 
 class OLS:
-    def __init__(self, X, y, neweyWestLags=None, sampleSplit=0.7):
+    def __init__(self, X, y, neweyWestLags=None, sampleSplit=0.6666667):
         """
         Represents an influence between a set of influencers and an influenced variable.
 
