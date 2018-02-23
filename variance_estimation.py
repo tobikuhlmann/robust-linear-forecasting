@@ -31,7 +31,6 @@ class ExAnteVariance(object):
         #
         self.vol = vol
         self.imp_vol = implied_vol
-        self.nan = None
         self.ols_res = None
         self.plt = None
 
@@ -40,48 +39,44 @@ class ExAnteVariance(object):
     def estimate_variance(self):
         # 1. Estimate (sigma_t)2, the (ex ante) conditional variance of next-period unexpected returns epsilon_(t+1)
         # using a HAR-RV (Hierachical Autoregressive-Realized Variance) Model from Corsi (2009)
-
         print('Variance Estimation begins!')
-        # explanatory variable 1: rename daily volatility
-        self.vol = self.vol.rename(columns={'volatility': 'vol_daily'})
         # dependent variable: shift vol_daily as dependent variable
-        self.vol['vol_daily_est'] = self.vol['vol_daily'].shift(-1)
+        self.vol = pd.DataFrame({'var_daily': self.vol})
+        self.vol['var_daily_est'] = self.vol.shift(-1)
         # explanatory variable 2: calculate rolling average volatility weekly
-        self.vol['vol_weekly'] = self.vol['vol_daily'].rolling(window=5, center=False).mean()
+        self.vol['var_weekly'] = self.vol['var_daily'].rolling(window=5, center=False).mean()
         # explanatory variable3: calculate rolling average volatility monthly
-        self.vol['vol_monthly'] = self.vol['vol_daily'].rolling(window=22, center=False).mean()
-        # print(self.vol.head())
+        self.vol['var_monthly'] = self.vol['var_daily'].rolling(window=22, center=False).mean()
+        # implied vol
+        self.vol['implied_var'] = self.imp_vol
 
-        # Detect, delete print rows with nan
-        self.nan = self.vol[self.vol.isnull().any(axis=1)]
+        # delete rows with nan, resulting from weekly and monthly rolling mean at the end
         self.vol = self.vol.dropna()
-        print("{} rows with nan detected and deleted".format(self.nan.shape[0]))
-        print("New dataframe shape {}".format(self.vol.shape))
 
         # Check if implied vol is passed and proceed respectively
         # Without implied vol
         if self.imp_vol is None:
             # Corsi (2009) HAR-EV Model: RV_(t+1d)(d)=c+beta(d)*RV_t(d)+beta(w)*RV_t(w)+beta(m)*RV_t(m)+w_(t+1d)(d)
             # fit regression model
-            self.ols_res = smf.ols(formula="vol_daily_est ~ vol_daily + vol_weekly + vol_monthly", data=self.vol).fit()
+            self.ols_res = smf.ols(formula="var_daily_est ~ var_daily + var_weekly + var_monthly", data=self.vol).fit()
             print("Variance Estimation Results")
             print(self.ols_res.summary())
             # predict with fitted regression model
-            self.vol['vol_daily_est'] = self.ols_res.predict()
+            self.vol['var_daily_est'] = self.ols_res.predict(self.vol[['var_daily', 'var_weekly', 'var_monthly']])
             print('Variance estimated!')
         # With implied vol
         else:
             # Corsi (2009) HAR-EV Model: RV_(t+1d)(d)=c+beta(d)*RV_t(d)+beta(imp)*IMPV_t(d)+beta(w)*RV_t(w)+beta(m)*RV_t(m)+w_(t+1d)(d)
             # fit regression model
-            self.ols_res = smf.ols(formula="vol_daily_est ~ vol_daily + implied_vol + vol_weekly + vol_monthly",
+            self.ols_res = smf.ols(formula="var_daily_est ~ var_daily + implied_var + var_weekly + var_monthly",
                                    data=self.vol).fit()
             print("Variance Estimation Results")
             print(self.ols_res.summary())
             # predict with fitted regression model
-            self.vol['vol_daily_est'] = self.ols_res.predict()
+            self.vol['var_daily_est'] = self.ols_res.predict(self.vol[['var_daily', 'implied_var', 'var_weekly', 'var_monthly']])
             print('Variance estimated!')
 
         # plot
-        # self.vol.plot(subplots=True)
+        self.vol.plot(subplots=True)
 
-        return self.vol['vol_daily_est']
+        return self.vol['var_daily_est']
