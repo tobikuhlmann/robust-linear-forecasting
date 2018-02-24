@@ -46,7 +46,7 @@ class OLS_model(object):
 
         #print('WLS-EV Regression Object initialized!')
 
-    def fit(self, summary = False):
+    def fit(self):
         """
         Estimate ols
         """
@@ -192,9 +192,9 @@ class OLS_model(object):
 
         matplotlib.style.use('ggplot')
 
-        plt.plot(range(0, len(self.log_return_predict_benchmark)), self.log_return_predict_benchmark,
+        plt.plot(range(0, len(self.log_return_predict_benchmark[:-(self.forecast_horizon-1)])), self.log_return_predict_benchmark[:-(self.forecast_horizon-1)],
                  label='mean benchmark')
-        plt.plot(range(0, len(self.log_return_predict_wlsev)), self.log_return_predict_wlsev,
+        plt.plot(range(0, len(self.log_return_predict_wlsev[:-(self.forecast_horizon-1)])), self.log_return_predict_wlsev[:-(self.forecast_horizon-1)],
                  label='ols')
         plt.plot(range(0, len(rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon))),
                  rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon),
