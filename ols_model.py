@@ -192,9 +192,9 @@ class OLS_model(object):
 
         matplotlib.style.use('ggplot')
 
-        plt.plot(range(0, len(self.log_return_predict_benchmark[:-(self.forecast_horizon-1)])), self.log_return_predict_benchmark[:-(self.forecast_horizon-1)],
+        plt.plot(range(0, len(self.log_return_predict_benchmark)), self.log_return_predict_benchmark,
                  label='mean benchmark')
-        plt.plot(range(0, len(self.log_return_predict_wlsev[:-(self.forecast_horizon-1)])), self.log_return_predict_wlsev[:-(self.forecast_horizon-1)],
+        plt.plot(range(0, len(self.log_return_predict_wlsev)), self.log_return_predict_wlsev,
                  label='ols')
         plt.plot(range(0, len(rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon))),
                  rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon),
