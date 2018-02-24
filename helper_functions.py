@@ -41,26 +41,7 @@ def scale_matrix(x):
     E_x = np.dot(np.transpose(x), x)
     E_x = np.divide(E_x, x.shape[0])
 
-    ''' Loop Solution
-    E_x = np.zeros((x.shape[1], x.shape[1]))
-    for t in range(0, x.shape[0]):
-        E_x += np.dot(x[t:t+1,:].T, x[t:t+1,:])
-    E_x /= x.shape[0]
-    '''
     return E_x
-
-def scale_matrix_old(x):
-    """
-    calculates expected value (here sample average) of X'X
-    :param x: matrix with constant in first column
-    :return: returns scale parameter
-    """
-    E_x = np.zeros((x.shape[1], x.shape[1]))
-    for t in range(0, x.shape[0]):
-        E_x += np.dot(x[t:t+1,:].T, x[t:t+1,:])
-    E_x /= x.shape[0]
-    return E_x
-
 
 
 if __name__ == "__main__":
