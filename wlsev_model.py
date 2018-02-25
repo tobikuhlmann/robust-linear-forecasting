@@ -66,13 +66,13 @@ class Wlsev_model(object):
         # get multivariate hodrick sum (sum up each column seperate)
         X_hodrick_sum = hodrick_sum(data=X, forecast_horizon=self.forecast_horizon)
 
-        # get matrix of scales
-        scale_a = scale_matrix(X)
-        scale_b = scale_matrix(X_hodrick_sum)
+        # get matrix of scales with already weighted X
+        scale_a = scale_matrix(X / self.est_var.reshape(self.est_var.shape[0], 1) ** 0.5)
+        scale_b = scale_matrix(X_hodrick_sum/est_var_dim_adj.reshape(est_var_dim_adj.shape[0], 1))
         scale = np.dot(np.linalg.inv(scale_a), scale_b)
 
         # wlsev step: divide by vol
-        X = np.divide(X_hodrick_sum, est_var_dim_adj.reshape((est_var_dim_adj.shape[0], 1)))
+        X = np.divide(X_hodrick_sum, est_var_dim_adj.reshape(est_var_dim_adj.shape[0], 1))
 
         # Y = r_(t+1)/sigma
         y = np.divide(self.y[self.forecast_horizon-1:], est_var_dim_adj)

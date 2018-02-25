@@ -30,7 +30,7 @@ retvol['volatility'] = retvol['volatility'] ** 2
 # set forecast_horizon
 forecast_horizon = 1
 # Instantiate object
-wlsev_obj = Wlsev_model(retvol['r'][:-1].as_matrix(), retvol['r'][1:].as_matrix(), retvol['volatility'][1:].as_matrix(), forecast_horizon)
+wlsev_obj = Wlsev_model(retvol['r'][:-1].as_matrix(), retvol['r'][1:].as_matrix(), retvol['volatility'][:-1].as_matrix(), forecast_horizon)
 
 # fit model
 wlsev_obj.fit()
