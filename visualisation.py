@@ -28,6 +28,30 @@ def plot_results(X,Y,y_wlsev, y_ols):
     plt.legend()
     plt.show()
 
+def plot_results_custom(X, Y, y_wlsev, y_ols, title, ylabel):
+    """
+    plot results
+
+    """
+    import matplotlib
+
+    matplotlib.use
+    import matplotlib.pyplot as plt
+
+    matplotlib.style.use('ggplot')
+
+    plt.plot(range(0, len(y_ols)), y_ols,
+             label='ols')
+    plt.plot(range(0, len(y_wlsev)), y_wlsev,
+             label='wls-ev')
+    plt.plot(range(0, len(Y)), Y,
+             label='realized')
+    plt.title(title)
+    plt.xlabel('time')
+    plt.ylabel(ylabel)
+    plt.legend()
+    plt.show()
+
 
 def plot_scatter(X,Y,y_wlsev, y_ols):
     """
