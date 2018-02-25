@@ -50,6 +50,34 @@ def plot_results_custom(X, Y, y_wlsev, y_ols, title, ylabel):
     plt.xlabel('time')
     plt.ylabel(ylabel)
     plt.legend()
+    plt.savefig('../Presentation/figures/r_r_result_14.png')
+    plt.show()
+
+def plot_scatter_custom(X, Y, y_wlsev, y_ols, title):
+    """
+    plot scatter
+
+    """
+    import matplotlib
+
+    matplotlib.use
+    import matplotlib.pyplot as plt
+
+    matplotlib.style.use('ggplot')
+
+    plt.scatter(X, Y)
+    plt.title(title)
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    # plot wlsev prediction
+    plt.plot(X, y_wlsev,
+             label='wls-ev')
+    # plot ols prediction
+    plt.plot(X, y_ols,
+             label='ols')
+
+    plt.legend()
+    plt.savefig('../Presentation/figures/r_r_scatter_14.png')
     plt.show()
 
 
