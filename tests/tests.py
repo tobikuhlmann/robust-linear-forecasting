@@ -2,6 +2,7 @@ __author__ = 'Tobias Kuhlmann'
 
 from wlsev.wlsev_model import Wlsev_model
 from wlsev.ols_model import OLS_model
+import tools.visualisation as v
 import pandas as pd
 
 # Data Import and Transformation
@@ -10,7 +11,7 @@ import pandas as pd
 # Import price data and calc log returns
 # --------------------------------------------------
 '''Simulated data a = 1; b = 1; sigma = 0.5 at forecast horizon 5'''
-retvol = pd.read_csv('data/simulated.csv', sep=";")
+retvol = pd.read_csv('../data/simulated.csv', sep=",")
 # Calculate variance from vol
 retvol['volatility'] = retvol['volatility'] ** 2
 
@@ -23,7 +24,7 @@ retvol['volatility'] = retvol['volatility'] ** 2
 # ------------------------------------------------------------------------------------------------------------
 
 # set forecast_horizon
-forecast_horizon = 1
+forecast_horizon = 5
 # Instantiate object
 wlsev_obj = Wlsev_model(retvol['r'][:-1].as_matrix(), retvol['r'][1:].as_matrix(), retvol['volatility'][:-1].as_matrix(), forecast_horizon)
 
@@ -53,6 +54,6 @@ X, Y, y_ols = ols_obj.get_plot_data_ols()
 # ------------------------------------------------------------------------------------------------------------
 
 # time series plot
-visualisation.plot_results(X,Y,y_wlsev, y_ols)
+v.plot_results(X,Y,y_wlsev, y_ols)
 # scatter plot
-visualisation.plot_scatter(X,Y,y_wlsev, y_ols)
+v.plot_scatter(X,Y,y_wlsev, y_ols)

@@ -69,7 +69,7 @@ class ExAnteVariance(object):
         else:
             # Corsi (2009) HAR-EV Model: RV_(t+1d)(d)=c+beta(d)*RV_t(d)+beta(imp)*IMPV_t(d)+beta(w)*RV_t(w)+beta(m)*RV_t(m)+w_(t+1d)(d)
             # fit regression model
-            # impl vol log transformation
+            #impl vol log transformation
             self.imp_vol = np.log(self.imp_vol)
             self.vol = self.vol.join(self.imp_vol)
             self.ols_res = smf.ols(formula="var_daily_est ~ var_daily + implied_var + var_weekly + var_monthly",

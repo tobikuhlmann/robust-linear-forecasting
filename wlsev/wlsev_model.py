@@ -42,6 +42,7 @@ class Wlsev_model(object):
         self.rmse_in_sample = None
         self.var_in_sample = None
         self.in_sample_r_squared = None
+        self.in_sample_r_squared_stand = None
 
         # plots
         self.log_return_predict_benchmark = None
@@ -84,6 +85,8 @@ class Wlsev_model(object):
         # Error Statistics
         # Get robust standard errors Newey West (1987) with 6 lags
         robust_standard_errors = wlsev.get_robustcov_results(cov_type='HAC', maxlags=6)
+        # get in sample r squared
+        self.in_sample_r_squared_stand = robust_standard_errors.rsquared
         # 2. Scale the resulting coefficients and standard errors
         # Scale parameter Var_x_t_rolling/Var_x_t, scale = 1 if forecast horizon = 1
         # Scale betas
@@ -186,11 +189,12 @@ class Wlsev_model(object):
         print("WLS-EV Estimation Results")
         print('Forecast Horizon: {}'.format(self.forecast_horizon))
         print("-------------------------------------------------------------------------------------------------------")
-        print("betas: {}".format(np.around(self.betas,4)))
-        print("robust bse standard errors: {}".format(np.around(self.std_errors,4)))
-        print("t-stats: {}".format(np.around(self.t_stats,4)))
-        print("In sample R_squared: {}".format(round(self.in_sample_r_squared,4)))
-        print("Out of sample R_squared: {}".format(round(self.oos_r_squared,4)))
+        print("betas: {}".format(np.around(self.betas,8)))
+        print("robust bse standard errors: {}".format(np.around(self.std_errors,8)))
+        print("t-stats: {}".format(np.around(self.t_stats,8)))
+        print("In sample R_squared: {}".format(round(self.in_sample_r_squared,8)))
+        print("In sample R_squared of standardized regression: {}".format(round(self.in_sample_r_squared_stand, 8)))
+        print("Out of sample R_squared: {}".format(round(self.oos_r_squared,8)))
         print("-------------------------------------------------------------------------------------------------------")
 
     def get_results(self):
@@ -212,10 +216,10 @@ class Wlsev_model(object):
         matplotlib.style.use('ggplot')
 
         # benchmark prediction
-        plt.plot(range(0, len(self.log_return_predict_benchmark)), self.log_return_predict_benchmark,
+        plt.plot(range(0, len(self.log_return_predict_benchmark[:-(self.forecast_horizon - 1)])), self.log_return_predict_benchmark[:-(self.forecast_horizon - 1)],
                  label='mean benchmark')
         # wlsev prediction
-        plt.plot(range(0, len(self.log_return_predict_wlsev)), self.log_return_predict_wlsev,
+        plt.plot(range(0, len(self.log_return_predict_wlsev[:-(self.forecast_horizon - 1)])), self.log_return_predict_wlsev[:-(self.forecast_horizon - 1)],
                  label='wlsev')
         # realized returns
         plt.plot(range(0, len(rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon))),rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon),

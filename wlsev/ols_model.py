@@ -167,11 +167,11 @@ class OLS_model(object):
         print("OLS Estimation Results")
         print('Forecast Horizon: {}'.format(self.forecast_horizon))
         print("-------------------------------------------------------------------------------------------------------")
-        print("betas: {}".format(np.around(self.betas,4)))
-        print("robust bse standard errors: {}".format(np.around(self.std_errors,4)))
-        print("t-stats: {}".format(np.around(self.t_stats,4)))
-        print("In sample R_squared: {}".format(round(self.in_sample_r_squared,4)))
-        print("Out of sample R_squared: {}".format(round(self.oos_r_squared,4)))
+        print("betas: {}".format(np.around(self.betas,8)))
+        print("robust bse standard errors: {}".format(np.around(self.std_errors,8)))
+        print("t-stats: {}".format(np.around(self.t_stats,8)))
+        print("In sample R_squared: {}".format(round(self.in_sample_r_squared,8)))
+        print("Out of sample R_squared: {}".format(round(self.oos_r_squared,8)))
         print("-------------------------------------------------------------------------------------------------------")
 
     def get_results(self):
@@ -192,9 +192,9 @@ class OLS_model(object):
 
         matplotlib.style.use('ggplot')
 
-        plt.plot(range(0, len(self.log_return_predict_benchmark)), self.log_return_predict_benchmark,
+        plt.plot(range(0, len(self.log_return_predict_benchmark[:-(self.forecast_horizon - 1)])), self.log_return_predict_benchmark[:-(self.forecast_horizon - 1)],
                  label='mean benchmark')
-        plt.plot(range(0, len(self.log_return_predict_wlsev)), self.log_return_predict_wlsev,
+        plt.plot(range(0, len(self.log_return_predict_wlsev[:-(self.forecast_horizon - 1)])), self.log_return_predict_wlsev[:-(self.forecast_horizon - 1)],
                  label='ols')
         plt.plot(range(0, len(rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon))),
                  rolling_sum(self.y[int(len(self.y) * 2 / 3):], self.forecast_horizon),
