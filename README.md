@@ -1,5 +1,7 @@
 # Least squares weighted by ex-ante returns 
 
+Python implementation of Johnson (2018): https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2561112
+
 This is a project about robust linear forecasting with crash risk measures, following Johnson (2018). Code and seminar thesis are the result of a seminar project with the Computational Risk and Asset Management Group at the KIT .
 
 OLS is easy to use and the most efficient linear unbiased estimator when error terms are homoscedastic and without autocorrelation (Johnson 2018). However, these assumptions rarely hold in practice when working with financial data, resulting in inefficient model estimations with more error than necessary.
